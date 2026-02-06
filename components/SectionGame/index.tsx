@@ -39,6 +39,13 @@ const createInitialHand = (): PlayerHandCard[] =>
     card,
   }))
 
+const generateRewards = (winner: "player" | "rival") => {
+  const baseTokens = winner === "player" ? 320 : 180
+  const tokens = baseTokens + Math.floor(Math.random() * 80)
+  const usd = Number((tokens * 0.12).toFixed(2))
+  return { tokens, usd }
+}
+
 export default function SectionGame() {
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
@@ -62,6 +69,14 @@ export default function SectionGame() {
   const [playerHearts, setPlayerHearts] = useState(2)
   const [rivalHearts, setRivalHearts] = useState(2)
   const [currentMatch, setCurrentMatch] = useState(1)
+  const [finalWinner, setFinalWinner] = useState<"player" | "rival" | null>(
+    null,
+  )
+  const [finalRewards, setFinalRewards] = useState<{
+    tokens: number
+    usd: number
+  } | null>(null)
+  const [finalBannerVisible, setFinalBannerVisible] = useState(false)
   const [timeLeft, setTimeLeft] = useState(120)
 
   const [movingPlayerCard, setMovingPlayerCard] = useState<{
@@ -83,8 +98,18 @@ export default function SectionGame() {
   const [moveRivalActive, setMoveRivalActive] = useState(false)
 
   const revealCardRef = useRef<HTMLDivElement | null>(null)
+  const finalBannerTimeoutRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (finalBannerTimeoutRef.current) {
+        window.clearTimeout(finalBannerTimeoutRef.current)
+      }
+    }
+  }, [])
 
   const advanceToNextMatch = useCallback(() => {
+    if (finalWinner) return
     setShowOutcomeModal(false)
     setBattleOutcome(null)
     setPlacedCard(null)
@@ -95,7 +120,27 @@ export default function SectionGame() {
     setBattleReady(false)
     setBattlePhase("idle")
     setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
-  }, [])
+  }, [finalWinner])
+
+  const declareFinalWinner = useCallback(
+    (winner: "player" | "rival") => {
+      if (finalWinner) return
+      setFinalWinner(winner)
+      setFinalRewards(generateRewards(winner))
+      setShowOutcomeModal(false)
+      setBattleOutcome(null)
+      setFinalBannerVisible(false)
+
+      if (finalBannerTimeoutRef.current) {
+        window.clearTimeout(finalBannerTimeoutRef.current)
+      }
+
+      finalBannerTimeoutRef.current = window.setTimeout(() => {
+        setFinalBannerVisible(true)
+      }, 500)
+    },
+    [finalWinner],
+  )
 
   useEffect(() => {
     if (!selectedCard) return
@@ -157,31 +202,93 @@ export default function SectionGame() {
     }
 
     const resolveTimer = window.setTimeout(() => {
+      const isFinalRound = currentMatch === MAX_MATCHES
+
       if (placedCard === rivalPlacedCard) {
         setBattleOutcome("draw")
-        setShowOutcomeModal(true)
+        if (isFinalRound && playerHearts !== rivalHearts) {
+          declareFinalWinner(playerHearts > rivalHearts ? "player" : "rival")
+        } else {
+          setShowOutcomeModal(true)
+        }
         return
       }
 
       const playerWins = CARD_BEATS[placedCard] === rivalPlacedCard
+      const nextPlayerHearts = playerWins
+        ? playerHearts
+        : Math.max(0, playerHearts - 1)
+      const nextRivalHearts = playerWins
+        ? Math.max(0, rivalHearts - 1)
+        : rivalHearts
+
       setBattleOutcome(playerWins ? "player" : "rival")
-      setPlayerHearts((hp) => (playerWins ? hp : Math.max(0, hp - 1)))
-      setRivalHearts((hp) => (playerWins ? Math.max(0, hp - 1) : hp))
+      setPlayerHearts(nextPlayerHearts)
+      setRivalHearts(nextRivalHearts)
+
+      const heartsFinished = nextPlayerHearts === 0 || nextRivalHearts === 0
+
+      if (heartsFinished || isFinalRound) {
+        declareFinalWinner(
+          nextPlayerHearts > nextRivalHearts ? "player" : "rival",
+        )
+        return
+      }
+
       setShowOutcomeModal(true)
     }, 720)
 
     return () => window.clearTimeout(resolveTimer)
-  }, [battlePhase, placedCard, rivalPlacedCard, battleOutcome])
+  }, [
+    battlePhase,
+    placedCard,
+    rivalPlacedCard,
+    battleOutcome,
+    playerHearts,
+    rivalHearts,
+    currentMatch,
+    declareFinalWinner,
+  ])
 
   useEffect(() => {
-    if (!showOutcomeModal || !battleOutcome) return
+    if (finalWinner) return
+    if (playerHearts <= 0 && rivalHearts <= 0) return
+    if (playerHearts <= 0) {
+      declareFinalWinner("rival")
+    } else if (rivalHearts <= 0) {
+      declareFinalWinner("player")
+    }
+  }, [playerHearts, rivalHearts, finalWinner, declareFinalWinner])
+
+  useEffect(() => {
+    if (finalWinner) return
+    if (
+      currentMatch === MAX_MATCHES &&
+      battleOutcome === "draw" &&
+      showOutcomeModal &&
+      playerHearts !== rivalHearts
+    ) {
+      declareFinalWinner(playerHearts > rivalHearts ? "player" : "rival")
+    }
+  }, [
+    currentMatch,
+    battleOutcome,
+    playerHearts,
+    rivalHearts,
+    showOutcomeModal,
+    declareFinalWinner,
+    finalWinner,
+  ])
+
+  useEffect(() => {
+    if (!showOutcomeModal || !battleOutcome || finalWinner) return
 
     const resetTimer = window.setTimeout(() => {
       advanceToNextMatch()
     }, 1200)
 
     return () => window.clearTimeout(resetTimer)
-  }, [showOutcomeModal, battleOutcome, advanceToNextMatch])
+  }, [showOutcomeModal, battleOutcome, advanceToNextMatch, finalWinner])
 
   const handleSelectCard = (card: Card, index: number) => {
     setSelectedCard(null)
@@ -464,9 +571,11 @@ export default function SectionGame() {
               <span className="text-2xl drop-shadow zelda-heart">
                 <FaHeart className="drop-shadow text-cza-red" />
               </span>
-              <span className="text-2xl drop-shadow zelda-heart zelda-heart-delay">
-                <FaHeart className="drop-shadow text-cza-red" />
-              </span>
+              {playerHearts > 1 && (
+                <span className="text-2xl drop-shadow zelda-heart zelda-heart-delay">
+                  <FaHeart className="drop-shadow text-cza-red" />
+                </span>
+              )}
             </div>
 
             <strong className="ml-1">x{playerHearts}</strong>
@@ -579,7 +688,7 @@ export default function SectionGame() {
         <div className="fixed inset-0 z-20 flex items-center justify-center">
           <button
             type="button"
-            className="absolute inset-0 bg-black/50"
+            className="absolute backdrop-blur-xs inset-0 bg-black/50"
             onClick={() => {
               setSelectedCard(null)
               setActiveHandIndex(null)
@@ -713,29 +822,29 @@ export default function SectionGame() {
       )}
 
       {showOutcomeModal && battleOutcome && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center">
+        <div className="fixed inset-0 z-40 flex gap-8 flex-col items-center justify-center">
           <button
             type="button"
-            className="absolute inset-0 bg-black/70"
+            className="absolute backdrop-blur inset-0 bg-black/70"
             onClick={advanceToNextMatch}
             aria-label="Dismiss outcome"
           />
           <div
             className={cn(
-              "relative z-10 backdrop-blur-lg px-10 py-6 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
+              "relative z-10 backdrop-blur-lg px-10 py-7 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
               battleOutcome === "player" &&
                 "bg-cza-green/10 border-cza-green/30",
               battleOutcome === "rival" && "bg-cza-red/10 border-cza-red/30",
               battleOutcome === "draw" && "bg-white/10 border-white/30",
             )}
           >
-            <p className="text-xs tracking-[0.35em] text-white/60">
+            <p className="text-xs tracking-[0.25em] text-white/60">
               BATTLE RESULT
             </p>
 
             <h3
               className={cn(
-                "mt-3 text-4xl font-black tracking-tight",
+                "mt-2 mb-1 text-4xl font-black tracking-tight",
                 battleOutcome === "player" && "text-cza-green",
                 battleOutcome === "rival" && "text-cza-red",
                 battleOutcome === "draw" && "text-white",
@@ -747,13 +856,47 @@ export default function SectionGame() {
                   ? "YOU LOSE"
                   : "DRAW"}
             </h3>
-            <p className="mt-2 text-sm text-white/70">
-              {battleOutcome === "draw"
-                ? "Both combatants matched power."
-                : battleOutcome === "player"
-                  ? "Your card outplayed the rival this round."
-                  : "Rival bested you this time."}
+          </div>
+        </div>
+      )}
+
+      {finalWinner && finalRewards && finalBannerVisible && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/80" aria-hidden />
+          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-b from-[#120418] via-[#220826] to-[#0b0210] px-10 py-12 shadow-[0_25px_80px_rgba(0,0,0,0.6)]">
+            <p className="text-xs uppercase tracking-[0.5em] text-white/60">
+              Match Winner
             </p>
+            <h2 className="mt-4 text-5xl sm:text-6xl font-black tracking-tight">
+              {finalWinner === "player" ? "NyousStark" : "Arthur"}
+            </h2>
+            <p className="mt-3 text-base text-white/70">
+              {finalWinner === "player"
+                ? "Congratulations on your victory!"
+                : "Better luck next time."}
+            </p>
+
+            <div className="mt-10 grid grid-cols-2 gap-6">
+              <div className="rounded-2xl border border-white/15 bg-white/5 py-5">
+                <p className="text-xs uppercase tracking-[0.4em] text-white/60">
+                  Tokens
+                </p>
+                <p className="mt-2 text-3xl font-black text-cza-yellow">
+                  {finalRewards.tokens.toLocaleString()}
+                </p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/5 py-5">
+                <p className="text-xs uppercase tracking-[0.4em] text-white/60">
+                  USDC Earned
+                </p>
+                <p className="mt-2 text-3xl font-black text-cza-green">
+                  {`$${finalRewards.usd.toLocaleString(undefined, {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}`}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}
