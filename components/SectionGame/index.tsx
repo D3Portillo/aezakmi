@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react"
 import Spinner from "@/components/Spinner"
 import { cn } from "@/lib/utils"
 
+import { FaHeart } from "react-icons/fa6"
 import { GiBombingRun } from "react-icons/gi"
 
 type Card = "Cowboy" | "Zombie" | "Alien"
@@ -162,18 +163,24 @@ export default function SectionGame() {
               </div>
 
               <div>
-                <div className="text-xs uppercase text-white/60">YOU</div>
+                <div className="text-xs text-white/60">
+                  <span>YOU</span>
+                </div>
+
                 <div className="font-semibold text-sm">NyousStark</div>
               </div>
             </div>
 
-            <div className="size-8 rounded-full border-2 border-cza-red/90 bg-cza-red/10 flex items-center justify-center">
+            <div className="size-7 rounded-full border-2 border-cza-red/90 bg-cza-red/10 flex items-center justify-center">
               <span className="font-black text-xl">VS</span>
             </div>
 
             <div className="flex items-center justify-end gap-3">
               <div className="text-right">
-                <div className="text-xs uppercase text-white/60">RIVAL</div>
+                <div className="text-xs text-white/60">
+                  <span>RIVAL</span>
+                </div>
+
                 <div className="font-semibold text-sm">Arthur</div>
               </div>
 
@@ -193,12 +200,12 @@ export default function SectionGame() {
         </div>
       </section>
 
-      <div className="w-full pb-16 grow flex flex-col items-center justify-center">
+      <div className="w-full min-h-[70dvh] pb-16 grow flex flex-col items-center justify-center">
         <div className="grow w-full flex flex-col items-center justify-center gap-4">
           <div
             className={cn(
               "text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50 transition-opacity duration-300",
-              rivalPlacedCard || selectedCard === null
+              selectedIndex === null || rivalPlacedCard
                 ? "opacity-0 pointer-events-none"
                 : "opacity-100",
             )}
@@ -298,6 +305,41 @@ export default function SectionGame() {
         style={{ perspective: 600 }}
       >
         <nav className="-top-12 sm:-top-20 absolute flex justify-between text-white h-14 -left-14 -right-14">
+          <button className="absolute active:scale-98 flex items-center justify-center left-12 sm:left-2 -top-10 size-10">
+            <div className="-space-x-3 -rotate-9 flex items-center">
+              <style>{`
+              @keyframes zeldaHeart {
+                0%,
+                100% {
+                  transform: scale(1);
+                }
+                40% {
+                  transform: scale(1.18);
+                }
+                70% {
+                  transform: scale(0.95);
+                }
+              }
+
+              .zelda-heart {
+                animation: zeldaHeart 1.2s ease-in-out infinite;
+              }
+
+              .zelda-heart-delay {
+                animation-delay: 0.15s;
+              }
+            `}</style>
+              <span className="text-2xl drop-shadow zelda-heart">
+                <FaHeart className="drop-shadow text-cza-red" />
+              </span>
+              <span className="text-2xl drop-shadow zelda-heart zelda-heart-delay">
+                <FaHeart className="drop-shadow text-cza-red" />
+              </span>
+            </div>
+
+            <strong className="ml-1">x2</strong>
+          </button>
+
           <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-200 border-yellow-500 border-2">
             <span className="text-5xl -rotate-6">💵</span>
             <div className="absolute text-[0.65rem] leading-none bottom-[120%] text-white font-medium">
