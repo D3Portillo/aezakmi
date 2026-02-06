@@ -5,6 +5,8 @@ import { Facehash } from "facehash"
 import Spinner from "@/components/Spinner"
 import { cn } from "@/lib/utils"
 
+import { GiBombingRun } from "react-icons/gi"
+
 type Card = "Cowboy" | "Zombie" | "Alien"
 
 const PLAYER_HAND: Card[] = ["Cowboy", "Zombie", "Alien"]
@@ -131,7 +133,7 @@ export default function Home() {
   }
 
   return (
-    <main className="relative flex flex-col items-center min-h-dvh pb-6 gap-6">
+    <main className="relative overflow-x-hidden flex flex-col items-center min-h-dvh pb-6 gap-6">
       <section className="w-full p-2 max-w-3xl">
         <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 p-3 text-white shadow-lg">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
@@ -272,25 +274,34 @@ export default function Home() {
         style={{ perspective: 800 }}
       >
         <nav className="-top-12 sm:-top-20 absolute flex justify-between text-white h-14 -left-14 -right-14">
+          <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-200 border-yellow-500 border-2">
+            <span className="text-5xl -rotate-6">💵</span>
+            <div className="absolute text-[0.65rem] leading-none bottom-[120%] text-white font-medium">
+              Feeling <br />
+              Confident?
+            </div>
+          </button>
+
           <button
-            className="relative -rotate-6 py-4 bg-linear-to-br from-white to-cza-purple"
+            className="relative active:scale-98 -rotate-6 py-4 bg-linear-to-br from-red-950 to-cza-red"
             style={{
               clipPath: "polygon(5% 9%, 80% 11%, 100% 100%, 0% 100%)",
             }}
           >
-            <span className="font-semibold text-lg block text-black pl-10 pr-14">
+            <span className="font-semibold text-lg block text-white pl-10 pr-14">
               RETREAT
             </span>
           </button>
 
           <button
-            className="relative rotate-6 py-4 bg-linear-to-br from-cza-red to-cza-yellow"
+            className="relative active:scale-98 rotate-6 py-4 bg-linear-to-br from-cza-red to-cza-yellow"
             style={{
               clipPath: "polygon(95% 9%, 20% 11%, 0% 100%, 100% 100%)",
             }}
           >
-            <span className="font-semibold text-lg block text-white pl-14 pr-10">
-              NUKE
+            <span className="font-semibold text-lg flex items-center gap-2 text-white pl-14 pr-10">
+              <span>NUKE</span>
+              <GiBombingRun className="rotate-x-180 rotate-12" />
             </span>
           </button>
         </nav>
