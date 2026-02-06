@@ -22,5 +22,8 @@ a {
 }
 
 @theme {
-  --color-cza-orange: #fcab40;
+  --color-cza-red: #d62828;
+  --color-cza-green: #3aff6b;
+  --color-cza-purple: #7b5cff;
+  --color-cza-yellow: #ffae03;
 }
