@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Facehash } from "facehash"
 
 type Card = "Cowboy" | "Zombie" | "Alien"
@@ -17,6 +17,14 @@ export default function Home() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [revealOpen, setRevealOpen] = useState(false)
   const [revealKey, setRevealKey] = useState(0)
+  const [placedCard, setPlacedCard] = useState<Card | null>(null)
+  const [movingCard, setMovingCard] = useState<{
+    card: Card
+    from: DOMRect
+    to: DOMRect
+  } | null>(null)
+  const [moveActive, setMoveActive] = useState(false)
+  const revealCardRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     if (!selectedCard) return
@@ -43,6 +51,23 @@ export default function Home() {
       return "rotateY(-22deg) rotateX(12deg) scale(0.9) translateY(20px)"
     }
     return "rotateY(22deg) rotateX(12deg) scale(0.9) translateY(20px)"
+  }
+
+  const handleUse = () => {
+    if (!selectedCard || !revealCardRef.current) return
+    const target = document.getElementById("player-card")
+    if (!target) return
+
+    const from = revealCardRef.current.getBoundingClientRect()
+    const to = target.getBoundingClientRect()
+
+    setMovingCard({ card: selectedCard, from, to })
+    setMoveActive(false)
+    setSelectedCard(null)
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setMoveActive(true))
+    })
   }
 
   return (
@@ -119,11 +144,25 @@ export default function Home() {
         </div>
         <div className="grow w-full grid place-items-center">
           <div
+            id="player-card"
             style={{
               aspectRatio: "5 / 7",
             }}
-            className="border animate-[pulse_1500ms_infinite_linear] border-white/5 bg-white/10 rounded-lg w-1/3 max-w-24"
-          />
+            className={`border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center ${
+              placedCard
+                ? "bg-white/15"
+                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]"
+            }`}
+          >
+            {placedCard && (
+              <div className="flex flex-col items-center gap-1 text-white">
+                <div className="text-2xl leading-none">
+                  {CARD_INITIAL[placedCard]}
+                </div>
+                <div className="text-[11px] uppercase">{placedCard}</div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -178,6 +217,7 @@ export default function Home() {
           <div className="relative z-10 flex flex-col items-center gap-4">
             <div
               key={revealKey}
+              ref={revealCardRef}
               className="w-64 h-80 sm:w-72 sm:h-96 border-2 border-black/90 rounded-2xl bg-white shadow-2xl flex flex-col items-center justify-center transition-[transform,opacity,filter] duration-500 ease-out will-change-transform"
               style={{
                 transform: revealOpen
@@ -196,9 +236,45 @@ export default function Home() {
             <button
               type="button"
               className="px-5 py-2 rounded-lg border-2 border-black bg-black text-white font-semibold"
+              onClick={handleUse}
             >
               USE
             </button>
+          </div>
+        </div>
+      )}
+
+      {movingCard && (
+        <div
+          className="fixed z-30 pointer-events-none"
+          style={{
+            left: movingCard.from.left,
+            top: movingCard.from.top,
+            width: movingCard.from.width,
+            height: movingCard.from.height,
+            transformOrigin: "top left",
+            transform: moveActive
+              ? `translate(${movingCard.to.left - movingCard.from.left}px, ${
+                  movingCard.to.top - movingCard.from.top
+                }px) scale(${movingCard.to.width / movingCard.from.width}, ${
+                  movingCard.to.height / movingCard.from.height
+                })`
+              : "translate(0px, 0px) scale(1)",
+            transition: "transform 320ms ease-out, opacity 120ms ease-out",
+            transitionDelay: moveActive ? "0ms, 224ms" : "0ms, 0ms",
+            opacity: moveActive ? 0 : 1,
+          }}
+          onTransitionEnd={() => {
+            setPlacedCard(movingCard.card)
+            setMovingCard(null)
+            setMoveActive(false)
+          }}
+        >
+          <div className="w-full h-full border-2 border-black/90 rounded-2xl bg-white shadow-2xl flex flex-col items-center justify-center">
+            <div className="text-4xl leading-none">
+              {CARD_INITIAL[movingCard.card]}
+            </div>
+            <div className="mt-2 text-sm font-semibold">{movingCard.card}</div>
           </div>
         </div>
       )}
