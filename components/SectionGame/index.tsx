@@ -21,16 +21,19 @@ export default function SectionGame() {
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [activeHandIndex, setActiveHandIndex] = useState<number | null>(null)
+  const [fanOpened, setFanOpened] = useState(false)
   const [revealOpen, setRevealOpen] = useState(false)
   const [revealKey, setRevealKey] = useState(0)
   const [placedCard, setPlacedCard] = useState<Card | null>(null)
   const [rivalPlacedCard, setRivalPlacedCard] = useState<Card | null>(null)
   const [timeLeft, setTimeLeft] = useState(120)
+
   const [movingPlayerCard, setMovingPlayerCard] = useState<{
     card: Card
     from: DOMRect
     to: DOMRect
   } | null>(null)
+
   const [movingRivalCard, setMovingRivalCard] = useState<{
     card: Card
     from: DOMRect
@@ -39,8 +42,10 @@ export default function SectionGame() {
     height: number
     overshoot: { x: number; y: number }
   } | null>(null)
+
   const [movePlayerActive, setMovePlayerActive] = useState(false)
   const [moveRivalActive, setMoveRivalActive] = useState(false)
+
   const revealCardRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -50,6 +55,11 @@ export default function SectionGame() {
     const timer = window.setTimeout(() => setRevealOpen(true), 40)
     return () => window.clearTimeout(timer)
   }, [selectedCard])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setFanOpened(true), 80)
+    return () => window.clearTimeout(timer)
+  }, [])
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -188,7 +198,9 @@ export default function SectionGame() {
           <div
             className={cn(
               "text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50 transition-opacity duration-300",
-              rivalPlacedCard ? "opacity-0 pointer-events-none" : "opacity-100",
+              rivalPlacedCard || selectedCard === null
+                ? "opacity-0 pointer-events-none"
+                : "opacity-100",
             )}
           >
             <span>Waiting for rival</span>
@@ -272,7 +284,7 @@ export default function SectionGame() {
               </div>
             ) : (
               <p className="text-xs opacity-40 text-center p-2">
-                Place your
+                Pick your
                 <br />
                 card
               </p>
@@ -325,16 +337,29 @@ export default function SectionGame() {
           const isActive = activeHandIndex === idx
           const baseTransform = `translateX(${fanOffsets[idx]}px) translateY(${-lift[idx]}px) rotate(${rotations[idx]}deg)`
           const hoverTransform = `translateX(${fanOffsets[idx]}px) translateY(-30px) rotate(${rotations[idx]}deg)`
+          const closedTransform =
+            "translateX(0px) translateY(26px) rotate(0deg)"
+          const openDelay = idx * 90
           return (
             <div
               key={`${card}-${idx}`}
               className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl flex items-center justify-center text-base font-bold bg-white shadow-xl transition-[transform,box-shadow] duration-200 ease-out select-none"
               style={{
                 aspectRatio: "5 / 7",
-                transform: isActive ? hoverTransform : baseTransform,
+                transform: fanOpened
+                  ? isActive
+                    ? hoverTransform
+                    : baseTransform
+                  : closedTransform,
                 transformOrigin: "bottom center",
+                transition: fanOpened
+                  ? undefined
+                  : `transform 555ms ease-out ${openDelay}ms`,
               }}
               onMouseEnter={(event) => {
+                // Early return if fan is not opened
+                if (!fanOpened) return
+
                 const target = event.currentTarget
                 if (!isActive) {
                   target.style.transform = hoverTransform
@@ -342,6 +367,9 @@ export default function SectionGame() {
                 target.style.boxShadow = "0 24px 36px rgba(0,0,0,0.24)"
               }}
               onMouseLeave={(event) => {
+                // Early return if fan is not opened
+                if (!fanOpened) return
+
                 const target = event.currentTarget
                 if (!isActive) {
                   target.style.transform = baseTransform
@@ -399,7 +427,7 @@ export default function SectionGame() {
                   minWidth: "10rem",
                   clipPath: "polygon(5% 5%, 100% 0, 95% 95%, 0% 100%)",
                 }}
-                className="px-10 active:scale-98 group Button flex justify-center items-center text-black py-4 bg-linear-to-l from-cza-green via-cza-yellow to-cza-green"
+                className="px-10 active:scale-98 group Button flex justify-center items-center text-black py-4 bg-linear-to-l from-cza-green via-yellow-300 to-cza-green"
                 onClick={handleUse}
               >
                 <style scoped>{`

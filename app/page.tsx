@@ -74,7 +74,9 @@ export default function Home() {
     return () => window.clearTimeout(timer)
   }, [isSearching])
 
-  if (isGameStarted) return <SectionGame />
+  // if (isGameStarted) return <SectionGame />
+
+  return <SectionGame />
 
   if (showPrepare) {
     return <PrepareScreen onFinish={() => setIsGameStarted(true)} />
@@ -84,9 +86,9 @@ export default function Home() {
     return (
       <main className="relative flex min-h-dvh items-center justify-center bg-black">
         <div className="absolute bg-radial from-cza-red/7 to-cza-red/15 inset-0" />
-        <div className="relative z-10 flex flex-col items-center gap-3 text-white">
+        <div className="relative animate-in fade-in z-10 flex flex-col items-center gap-5 text-white">
+          <Spinner />
           <div className="text-sm">Searching for a game...</div>
-          <Spinner themeSize="size-5" />
         </div>
       </main>
     )
