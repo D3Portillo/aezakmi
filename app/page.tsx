@@ -89,7 +89,43 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="grow" />
+      <div className="w-full grow flex flex-col items-center justify-center">
+        <div className="grow w-full grid place-items-center">
+          <div
+            style={{
+              aspectRatio: "5 / 7",
+            }}
+            className="border animate-[pulse_1500ms_infinite_linear] border-white/5 bg-white/10 rounded-lg w-1/3 max-w-24"
+          />
+        </div>
+
+        <div className="w-full max-w-2xl">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute inset-x-0 h-px bg-white/15" aria-hidden />
+            <div className="relative z-1 bg-black flex items-center gap-4 px-4 text-white/90">
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs uppercase text-white/60">TIME</span>
+                <span className="font-bold text-cza-red">120s</span>
+              </div>
+
+              <div className="h-5 w-px rotate-6 bg-white/20" aria-hidden />
+
+              <div className="flex items-baseline gap-2">
+                <span className="text-xs uppercase text-white/60">MATCH</span>
+                <span className="font-bold text-white">1 / 3</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grow w-full grid place-items-center">
+          <div
+            style={{
+              aspectRatio: "5 / 7",
+            }}
+            className="border animate-[pulse_1500ms_infinite_linear] border-white/5 bg-white/10 rounded-lg w-1/3 max-w-24"
+          />
+        </div>
+      </div>
 
       <div
         className="relative w-80 sm:w-96 h-48 sm:h-56 flex items-end justify-center"
@@ -102,8 +138,9 @@ export default function Home() {
           return (
             <div
               key={`${card}-${idx}`}
-              className="absolute cursor-pointer bottom-0 w-28 h-40 sm:w-40 sm:h-52 border-2 border-black/80 rounded-xl flex items-center justify-center text-base font-bold bg-white shadow-xl transition-[transform,box-shadow] duration-200 ease-out select-none"
+              className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl flex items-center justify-center text-base font-bold bg-white shadow-xl transition-[transform,box-shadow] duration-200 ease-out select-none"
               style={{
+                aspectRatio: "5 / 7",
                 transform: `translateX(${fanOffsets[idx]}px) translateY(${-lift[idx]}px) rotate(${rotations[idx]}deg)`,
                 transformOrigin: "bottom center",
               }}
@@ -123,7 +160,7 @@ export default function Home() {
                 <div className="text-5xl leading-none">
                   {CARD_INITIAL[card]}
                 </div>
-                <div className="text-sm tracking-[0.6px]">{card}</div>
+                <div className="text-sm">{card}</div>
               </div>
             </div>
           )
@@ -154,9 +191,7 @@ export default function Home() {
               <div className="text-6xl leading-none">
                 {CARD_INITIAL[selectedCard]}
               </div>
-              <div className="mt-3 text-lg font-semibold tracking-[0.6px]">
-                {selectedCard}
-              </div>
+              <div className="mt-3 text-lg font-semibold">{selectedCard}</div>
             </div>
             <button
               type="button"
