@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import { Facehash } from "facehash"
 import Spinner from "@/components/Spinner"
+import { cn } from "@/lib/utils"
 
 type Card = "Cowboy" | "Zombie" | "Alien"
 
@@ -20,6 +21,7 @@ export default function Home() {
   const [revealKey, setRevealKey] = useState(0)
   const [placedCard, setPlacedCard] = useState<Card | null>(null)
   const [rivalPlacedCard, setRivalPlacedCard] = useState<Card | null>(null)
+  const [timeLeft, setTimeLeft] = useState(120)
   const [movingPlayerCard, setMovingPlayerCard] = useState<{
     card: Card
     from: DOMRect
@@ -44,6 +46,14 @@ export default function Home() {
     const timer = window.setTimeout(() => setRevealOpen(true), 40)
     return () => window.clearTimeout(timer)
   }, [selectedCard])
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
+    }, 1000)
+
+    return () => window.clearInterval(interval)
+  }, [])
 
   const handleSelectCard = (card: Card, index: number) => {
     setSelectedCard(null)
@@ -121,9 +131,9 @@ export default function Home() {
   }
 
   return (
-    <main className="relative flex flex-col items-center min-h-screen pb-6 gap-6">
+    <main className="relative flex flex-col items-center min-h-dvh pb-6 gap-6">
       <section className="w-full p-2 max-w-3xl">
-        <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 px-4 py-3 text-white shadow-lg">
+        <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 p-3 text-white shadow-lg">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl overflow-hidden">
@@ -167,12 +177,13 @@ export default function Home() {
         </div>
       </section>
 
-      <div className="w-full grow flex flex-col items-center justify-center">
+      <div className="w-full pb-16 grow flex flex-col items-center justify-center">
         <div className="grow w-full flex flex-col items-center justify-center gap-4">
           <div
-            className={`text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50 transition-opacity duration-300 ${
-              rivalPlacedCard ? "opacity-0 pointer-events-none" : "opacity-100"
-            }`}
+            className={cn(
+              "text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50 transition-opacity duration-300",
+              rivalPlacedCard ? "opacity-0 pointer-events-none" : "opacity-100",
+            )}
           >
             <span>Waiting for rival</span>
             <Spinner themeSize="size-3" />
@@ -183,11 +194,12 @@ export default function Home() {
             style={{
               aspectRatio: "5 / 7",
             }}
-            className={`border border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center ${
+            className={cn(
+              "border border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center",
               rivalPlacedCard
                 ? "bg-white/15"
-                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]"
-            }`}
+                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]",
+            )}
           >
             {rivalPlacedCard && (
               <div className="flex flex-col items-center gap-1 text-white">
@@ -200,20 +212,32 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="w-full max-w-2xl">
+        <div className="w-full py-8 max-w-2xl">
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-x-0 h-px bg-white/15" aria-hidden />
+            <div className="absolute inset-x-0 h-px bg-white/20" aria-hidden />
+
             <div className="relative z-1 bg-black flex items-center gap-4 px-4 text-white/90">
+              <div className="flex w-20 items-baseline gap-2">
+                <span className="text-xs ml-auto uppercase text-white/60">
+                  TIME
+                </span>
+                <span className="font-bold w-10 text-center tabular-nums text-cza-red">
+                  {timeLeft.toString().padStart(2, "0")}s
+                </span>
+              </div>
+
+              <div className="h-5 w-px -rotate-6 bg-white/20" aria-hidden />
+
               <div className="flex items-baseline gap-2">
-                <span className="text-xs uppercase text-white/60">TIME</span>
-                <span className="font-bold text-cza-red">120s</span>
+                <span className="text-xs uppercase text-white/60">GAME</span>
+                <span className="font-bold text-white">1 / 3</span>
               </div>
 
               <div className="h-5 w-px rotate-6 bg-white/20" aria-hidden />
 
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs uppercase text-white/60">MATCH</span>
-                <span className="font-bold text-white">1 / 3</span>
+              <div className="flex w-20 items-baseline gap-2">
+                <span className="text-xs uppercase text-white/60">POT</span>
+                <span className="font-bold text-white">$0</span>
               </div>
             </div>
           </div>
@@ -224,11 +248,12 @@ export default function Home() {
             style={{
               aspectRatio: "5 / 7",
             }}
-            className={`border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center ${
+            className={cn(
+              "border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center",
               placedCard
                 ? "bg-white/15"
-                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]"
-            }`}
+                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]",
+            )}
           >
             {placedCard && (
               <div className="flex flex-col items-center gap-1 text-white">
@@ -246,6 +271,30 @@ export default function Home() {
         className="relative w-80 sm:w-96 h-48 sm:h-56 flex items-end justify-center"
         style={{ perspective: 800 }}
       >
+        <nav className="-top-12 sm:-top-20 absolute flex justify-between text-white h-14 -left-14 -right-14">
+          <button
+            className="relative -rotate-6 py-4 bg-linear-to-br from-white to-cza-purple"
+            style={{
+              clipPath: "polygon(5% 9%, 80% 11%, 100% 100%, 0% 100%)",
+            }}
+          >
+            <span className="font-semibold text-lg block text-black pl-10 pr-14">
+              RETREAT
+            </span>
+          </button>
+
+          <button
+            className="relative rotate-6 py-4 bg-linear-to-br from-cza-red to-cza-yellow"
+            style={{
+              clipPath: "polygon(95% 9%, 20% 11%, 0% 100%, 100% 100%)",
+            }}
+          >
+            <span className="font-semibold text-lg block text-white pl-14 pr-10">
+              NUKE
+            </span>
+          </button>
+        </nav>
+
         {PLAYER_HAND.map((card, idx) => {
           const fanOffsets = [-80, 0, 80]
           const rotations = [-12, 0, 12]
@@ -359,7 +408,7 @@ export default function Home() {
 
       {movingRivalCard && (
         <div
-          className="fixed z-30 pointer-events-none"
+          className="fixed z-10 pointer-events-none"
           style={{
             left: movingRivalCard.from.left,
             top: movingRivalCard.from.top,
@@ -394,7 +443,7 @@ export default function Home() {
         </div>
       )}
 
-      <style jsx global>{`
+      <style global>{`
         @keyframes rivalFade {
           0% {
             opacity: 0;
