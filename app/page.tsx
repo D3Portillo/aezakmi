@@ -19,12 +19,22 @@ export default function Home() {
   const [revealOpen, setRevealOpen] = useState(false)
   const [revealKey, setRevealKey] = useState(0)
   const [placedCard, setPlacedCard] = useState<Card | null>(null)
-  const [movingCard, setMovingCard] = useState<{
+  const [rivalPlacedCard, setRivalPlacedCard] = useState<Card | null>(null)
+  const [movingPlayerCard, setMovingPlayerCard] = useState<{
     card: Card
     from: DOMRect
     to: DOMRect
   } | null>(null)
-  const [moveActive, setMoveActive] = useState(false)
+  const [movingRivalCard, setMovingRivalCard] = useState<{
+    card: Card
+    from: DOMRect
+    to: DOMRect
+    width: number
+    height: number
+    overshoot: { x: number; y: number }
+  } | null>(null)
+  const [movePlayerActive, setMovePlayerActive] = useState(false)
+  const [moveRivalActive, setMoveRivalActive] = useState(false)
   const revealCardRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -62,12 +72,51 @@ export default function Home() {
     const from = revealCardRef.current.getBoundingClientRect()
     const to = target.getBoundingClientRect()
 
-    setMovingCard({ card: selectedCard, from, to })
-    setMoveActive(false)
+    setMovingPlayerCard({ card: selectedCard, from, to })
+    setMovePlayerActive(false)
     setSelectedCard(null)
 
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setMoveActive(true))
+      window.requestAnimationFrame(() => setMovePlayerActive(true))
+    })
+
+    window.setTimeout(() => {
+      const rivalCard =
+        PLAYER_HAND[Math.floor(Math.random() * PLAYER_HAND.length)]
+      animateRivalPlace(rivalCard)
+    }, 2000)
+  }
+
+  const animateRivalPlace = (card: Card) => {
+    const source = document.getElementById("rival-face")
+    const target = document.getElementById("rival-card")
+    if (!target || !source) return
+
+    const from = source.getBoundingClientRect()
+    const to = target.getBoundingClientRect()
+
+    const width = to.width
+    const height = to.height
+    const startX = from.left + from.width / 2 - width / 2
+    const startY = from.top + from.height / 2 - height / 2
+    const endX = to.left + to.width / 2 - width / 2
+    const endY = to.top + to.height / 2 - height / 2
+
+    const startRect = new DOMRect(startX, startY, width, height)
+    const endRect = new DOMRect(endX, endY, width, height)
+
+    setMovingRivalCard({
+      card,
+      from: startRect,
+      to: endRect,
+      width,
+      height,
+      overshoot: { x: 6, y: 6 },
+    })
+    setMoveRivalActive(false)
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => setMoveRivalActive(true))
     })
   }
 
@@ -102,7 +151,10 @@ export default function Home() {
                 <div className="font-semibold text-sm">Arthur</div>
               </div>
 
-              <div className="size-10 rounded-xl overflow-hidden">
+              <div
+                id="rival-face"
+                className="size-10 rounded-xl overflow-hidden"
+              >
                 <Facehash
                   colors={["#d62828", "#3aff6b", "#7b5cff", "#ffae03"]}
                   enableBlink
@@ -117,17 +169,35 @@ export default function Home() {
 
       <div className="w-full grow flex flex-col items-center justify-center">
         <div className="grow w-full flex flex-col items-center justify-center gap-4">
-          <div className="text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50">
+          <div
+            className={`text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50 transition-opacity duration-300 ${
+              rivalPlacedCard ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
+          >
             <span>Waiting for rival</span>
             <Spinner themeSize="size-3" />
           </div>
 
           <div
+            id="rival-card"
             style={{
               aspectRatio: "5 / 7",
             }}
-            className="border animate-[pulse_1500ms_infinite_linear] border-white/5 bg-white/10 rounded-lg w-1/2 max-w-24"
-          />
+            className={`border border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center ${
+              rivalPlacedCard
+                ? "bg-white/15"
+                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]"
+            }`}
+          >
+            {rivalPlacedCard && (
+              <div className="flex flex-col items-center gap-1 text-white">
+                <div className="text-2xl leading-none">
+                  {CARD_INITIAL[rivalPlacedCard]}
+                </div>
+                <div className="text-[11px] uppercase">{rivalPlacedCard}</div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="w-full max-w-2xl">
@@ -250,40 +320,96 @@ export default function Home() {
         </div>
       )}
 
-      {movingCard && (
+      {movingPlayerCard && (
         <div
           className="fixed z-30 pointer-events-none"
           style={{
-            left: movingCard.from.left,
-            top: movingCard.from.top,
-            width: movingCard.from.width,
-            height: movingCard.from.height,
+            left: movingPlayerCard.from.left,
+            top: movingPlayerCard.from.top,
+            width: movingPlayerCard.from.width,
+            height: movingPlayerCard.from.height,
             transformOrigin: "top left",
-            transform: moveActive
-              ? `translate(${movingCard.to.left - movingCard.from.left}px, ${
-                  movingCard.to.top - movingCard.from.top
-                }px) scale(${movingCard.to.width / movingCard.from.width}, ${
-                  movingCard.to.height / movingCard.from.height
+            transform: movePlayerActive
+              ? `translate(${movingPlayerCard.to.left - movingPlayerCard.from.left}px, ${
+                  movingPlayerCard.to.top - movingPlayerCard.from.top
+                }px) scale(${movingPlayerCard.to.width / movingPlayerCard.from.width}, ${
+                  movingPlayerCard.to.height / movingPlayerCard.from.height
                 })`
               : "translate(0px, 0px) scale(1)",
             transition: "transform 320ms ease-out, opacity 120ms ease-out",
-            transitionDelay: moveActive ? "0ms, 224ms" : "0ms, 0ms",
-            opacity: moveActive ? 0 : 1,
+            transitionDelay: movePlayerActive ? "0ms, 224ms" : "0ms, 0ms",
+            opacity: movePlayerActive ? 0 : 1,
           }}
           onTransitionEnd={() => {
-            setPlacedCard(movingCard.card)
-            setMovingCard(null)
-            setMoveActive(false)
+            setPlacedCard(movingPlayerCard.card)
+            setMovingPlayerCard(null)
+            setMovePlayerActive(false)
           }}
         >
-          <div className="w-full h-full border-2 border-black/90 rounded-2xl bg-white shadow-2xl flex flex-col items-center justify-center">
-            <div className="text-4xl leading-none">
-              {CARD_INITIAL[movingCard.card]}
+          <div className="w-full h-full border-2 border-black/90 rounded-xl bg-white shadow-2xl flex flex-col items-center justify-center">
+            <div className="text-3xl leading-none">
+              {CARD_INITIAL[movingPlayerCard.card]}
             </div>
-            <div className="mt-2 text-sm font-semibold">{movingCard.card}</div>
+            <div className="mt-1 text-xs font-semibold">
+              {movingPlayerCard.card}
+            </div>
           </div>
         </div>
       )}
+
+      {movingRivalCard && (
+        <div
+          className="fixed z-30 pointer-events-none"
+          style={{
+            left: movingRivalCard.from.left,
+            top: movingRivalCard.from.top,
+            width: movingRivalCard.width,
+            height: movingRivalCard.height,
+            transformOrigin: "top left",
+            transform: moveRivalActive
+              ? `translate(${movingRivalCard.to.left - movingRivalCard.from.left + movingRivalCard.overshoot.x}px, ${
+                  movingRivalCard.to.top -
+                  movingRivalCard.from.top +
+                  movingRivalCard.overshoot.y
+                }px)`
+              : "translate(0px, 0px)",
+            transition: "transform 320ms ease-out",
+            opacity: 1,
+            animation: moveRivalActive ? "rivalFade 320ms ease-out" : "none",
+          }}
+          onTransitionEnd={() => {
+            setRivalPlacedCard(movingRivalCard.card)
+            setMovingRivalCard(null)
+            setMoveRivalActive(false)
+          }}
+        >
+          <div className="w-full h-full border-2 border-black/90 rounded-xl bg-white shadow-2xl flex flex-col items-center justify-center">
+            <div className="text-3xl leading-none">
+              {CARD_INITIAL[movingRivalCard.card]}
+            </div>
+            <div className="mt-1 text-xs font-semibold">
+              {movingRivalCard.card}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style jsx global>{`
+        @keyframes rivalFade {
+          0% {
+            opacity: 0;
+          }
+          15% {
+            opacity: 1;
+          }
+          85% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0;
+          }
+        }
+      `}</style>
     </main>
   )
 }
