@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import { Facehash } from "facehash"
+import Spinner from "@/components/Spinner"
 
 type Card = "Cowboy" | "Zombie" | "Alien"
 
@@ -115,12 +116,17 @@ export default function Home() {
       </section>
 
       <div className="w-full grow flex flex-col items-center justify-center">
-        <div className="grow w-full grid place-items-center">
+        <div className="grow w-full flex flex-col items-center justify-center gap-4">
+          <div className="text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50">
+            <span>Waiting for rival</span>
+            <Spinner themeSize="size-3" />
+          </div>
+
           <div
             style={{
               aspectRatio: "5 / 7",
             }}
-            className="border animate-[pulse_1500ms_infinite_linear] border-white/5 bg-white/10 rounded-lg w-1/3 max-w-24"
+            className="border animate-[pulse_1500ms_infinite_linear] border-white/5 bg-white/10 rounded-lg w-1/2 max-w-24"
           />
         </div>
 
@@ -142,7 +148,7 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="grow w-full grid place-items-center">
+        <div className="grow w-full flex flex-col items-center justify-center gap-4">
           <div
             id="player-card"
             style={{
