@@ -1,7 +1,7 @@
 "use client"
 
 import { Facehash } from "facehash"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 import Spinner from "@/components/Spinner"
 import { cn } from "@/lib/utils"
@@ -23,6 +23,8 @@ const CARD_BEATS: Record<Card, Card> = {
   Zombie: "Alien",
   Alien: "Cowboy",
 }
+
+const MAX_MATCHES = 3
 
 type PlayerHandCard = {
   id: string
@@ -57,6 +59,9 @@ export default function SectionGame() {
     "player" | "rival" | "draw" | null
   >(null)
   const [showOutcomeModal, setShowOutcomeModal] = useState(false)
+  const [playerHearts, setPlayerHearts] = useState(2)
+  const [rivalHearts, setRivalHearts] = useState(2)
+  const [currentMatch, setCurrentMatch] = useState(1)
   const [timeLeft, setTimeLeft] = useState(120)
 
   const [movingPlayerCard, setMovingPlayerCard] = useState<{
@@ -78,6 +83,19 @@ export default function SectionGame() {
   const [moveRivalActive, setMoveRivalActive] = useState(false)
 
   const revealCardRef = useRef<HTMLDivElement | null>(null)
+
+  const advanceToNextMatch = useCallback(() => {
+    setShowOutcomeModal(false)
+    setBattleOutcome(null)
+    setPlacedCard(null)
+    setRivalPlacedCard(null)
+    setSelectedCard(null)
+    setSelectedIndex(null)
+    setActiveHandIndex(null)
+    setBattleReady(false)
+    setBattlePhase("idle")
+    setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
+  }, [])
 
   useEffect(() => {
     if (!selectedCard) return
@@ -147,11 +165,23 @@ export default function SectionGame() {
 
       const playerWins = CARD_BEATS[placedCard] === rivalPlacedCard
       setBattleOutcome(playerWins ? "player" : "rival")
+      setPlayerHearts((hp) => (playerWins ? hp : Math.max(0, hp - 1)))
+      setRivalHearts((hp) => (playerWins ? Math.max(0, hp - 1) : hp))
       setShowOutcomeModal(true)
     }, 720)
 
     return () => window.clearTimeout(resolveTimer)
   }, [battlePhase, placedCard, rivalPlacedCard, battleOutcome])
+
+  useEffect(() => {
+    if (!showOutcomeModal || !battleOutcome) return
+
+    const resetTimer = window.setTimeout(() => {
+      advanceToNextMatch()
+    }, 1200)
+
+    return () => window.clearTimeout(resetTimer)
+  }, [showOutcomeModal, battleOutcome, advanceToNextMatch])
 
   const handleSelectCard = (card: Card, index: number) => {
     setSelectedCard(null)
@@ -256,14 +286,20 @@ export default function SectionGame() {
               </div>
             </div>
 
-            <div className="size-7 rounded-full border-2 border-cza-red/90 bg-cza-red/10 flex items-center justify-center">
+            <div className="size-8 rounded-full border-2 border-cza-red/90 bg-cza-red/10 flex items-center justify-center">
               <span className="font-black text-xl">VS</span>
             </div>
 
             <div className="flex items-center justify-end gap-3">
               <div className="text-right">
-                <div className="text-xs text-white/60">
+                <div className="text-xs text-white/60 flex items-center justify-end gap-2">
                   <span>RIVAL</span>
+                  <span className="flex items-center gap-0.5 text-cza-red font-black">
+                    <FaHeart />
+                    <span className="text-white/80 text-[11px]">
+                      x{rivalHearts}
+                    </span>
+                  </span>
                 </div>
 
                 <div className="font-semibold text-sm">Arthur</div>
@@ -344,7 +380,9 @@ export default function SectionGame() {
 
               <div className="flex items-baseline gap-2">
                 <span className="text-xs uppercase text-white/60">GAME</span>
-                <span className="font-bold text-white">1 / 3</span>
+                <span className="font-bold text-white">
+                  {currentMatch} / {MAX_MATCHES}
+                </span>
               </div>
 
               <div className="h-5 w-px rotate-6 bg-white/20" aria-hidden />
@@ -431,7 +469,7 @@ export default function SectionGame() {
               </span>
             </div>
 
-            <strong className="ml-1">x2</strong>
+            <strong className="ml-1">x{playerHearts}</strong>
           </button>
 
           <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-200 border-yellow-500 border-2">
@@ -679,7 +717,7 @@ export default function SectionGame() {
           <button
             type="button"
             className="absolute inset-0 bg-black/70"
-            onClick={() => setShowOutcomeModal(false)}
+            onClick={advanceToNextMatch}
             aria-label="Dismiss outcome"
           />
           <div
