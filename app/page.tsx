@@ -1,11 +1,13 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { generateUUID } from "@/lib/utils"
 
 import SectionGame from "@/components/SectionGame"
+import Spinner from "@/components/Spinner"
 
-const PREP_STEPS = ["3", "2", "1", "GO"]
+const PREP_STEPS = ["IN", "3", "2", "1", "GO!"]
+
 function PrepareScreen({ onFinish }: { onFinish: () => void }) {
   const [stepIndex, setStepIndex] = useState(0)
   const renderKey = useMemo(
@@ -14,13 +16,13 @@ function PrepareScreen({ onFinish }: { onFinish: () => void }) {
   )
 
   return (
-    <main className="relative flex min-h-dvh items-center justify-center bg-black">
-      <div className="absolute bg-radial from-cza-red/7 to-cza-red/30 inset-0" />
+    <main className="relative overflow-hidden flex min-h-dvh items-center justify-center bg-black">
+      <div className="absolute bg-radial from-cza-red/7 to-cza-red/25 inset-0" />
       <div className="relative z-10 flex flex-col items-center gap-4">
         <div
           key={renderKey}
           style={{
-            animation: `s-${renderKey} 600ms ease-in-out forwards`,
+            animation: `s-${renderKey} 555ms ease-in-out forwards`,
           }}
           className="text-8xl font-black uppercase text-white drop-shadow-[0_12px_24px_rgba(0,0,0,0.6)]"
           onAnimationEnd={() => {
@@ -43,7 +45,7 @@ function PrepareScreen({ onFinish }: { onFinish: () => void }) {
           }
           50% {
             opacity: 1;
-            transform: scale(1.1) translateY(0px);
+            transform: scale(1.05) translateY(0px);
             filter: blur(0px);
           }
           100% {
@@ -59,7 +61,47 @@ function PrepareScreen({ onFinish }: { onFinish: () => void }) {
 
 export default function Home() {
   const [isGameStarted, setIsGameStarted] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
+  const [showPrepare, setShowPrepare] = useState(false)
+
+  useEffect(() => {
+    if (!isSearching) return
+    const timer = window.setTimeout(() => {
+      setIsSearching(false)
+      setShowPrepare(true)
+    }, 3000)
+
+    return () => window.clearTimeout(timer)
+  }, [isSearching])
 
   if (isGameStarted) return <SectionGame />
-  return <PrepareScreen onFinish={() => setIsGameStarted(true)} />
+
+  if (showPrepare) {
+    return <PrepareScreen onFinish={() => setIsGameStarted(true)} />
+  }
+
+  if (isSearching) {
+    return (
+      <main className="relative flex min-h-dvh items-center justify-center bg-black">
+        <div className="absolute bg-radial from-cza-red/7 to-cza-red/15 inset-0" />
+        <div className="relative z-10 flex flex-col items-center gap-3 text-white">
+          <div className="text-sm">Searching for a game...</div>
+          <Spinner themeSize="size-5" />
+        </div>
+      </main>
+    )
+  }
+
+  return (
+    <main className="relative flex min-h-dvh items-center justify-center bg-black">
+      <div className="absolute bg-radial from-cza-red/7 to-cza-red/15 inset-0" />
+      <button
+        type="button"
+        className="relative z-10 px-6 py-3 text-white border border-white/20"
+        onClick={() => setIsSearching(true)}
+      >
+        PLAY
+      </button>
+    </main>
+  )
 }
