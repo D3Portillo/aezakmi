@@ -18,7 +18,29 @@ const CARD_INITIAL: Record<Card, string> = {
   Alien: "A",
 }
 
+const CARD_BEATS: Record<Card, Card> = {
+  Cowboy: "Zombie",
+  Zombie: "Alien",
+  Alien: "Cowboy",
+}
+
+type PlayerHandCard = {
+  id: string
+  card: Card
+}
+
+let cardIdCounter = 0
+const nextCardId = () => `card-${cardIdCounter++}`
+const createInitialHand = (): PlayerHandCard[] =>
+  PLAYER_HAND.map((card) => ({
+    id: nextCardId(),
+    card,
+  }))
+
 export default function SectionGame() {
+  const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
+    createInitialHand(),
+  )
   const [selectedCard, setSelectedCard] = useState<Card | null>(null)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [activeHandIndex, setActiveHandIndex] = useState<number | null>(null)
@@ -27,6 +49,14 @@ export default function SectionGame() {
   const [revealKey, setRevealKey] = useState(0)
   const [placedCard, setPlacedCard] = useState<Card | null>(null)
   const [rivalPlacedCard, setRivalPlacedCard] = useState<Card | null>(null)
+  const [battleReady, setBattleReady] = useState(false)
+  const [battlePhase, setBattlePhase] = useState<"idle" | "shake" | "flip">(
+    "idle",
+  )
+  const [battleOutcome, setBattleOutcome] = useState<
+    "player" | "rival" | "draw" | null
+  >(null)
+  const [showOutcomeModal, setShowOutcomeModal] = useState(false)
   const [timeLeft, setTimeLeft] = useState(120)
 
   const [movingPlayerCard, setMovingPlayerCard] = useState<{
@@ -70,6 +100,59 @@ export default function SectionGame() {
     return () => window.clearInterval(interval)
   }, [])
 
+  useEffect(() => {
+    if (!placedCard || !rivalPlacedCard) {
+      setBattleReady(false)
+      setBattleOutcome(null)
+      setShowOutcomeModal(false)
+      return
+    }
+
+    const timer = window.setTimeout(() => setBattleReady(true), 500)
+    return () => window.clearTimeout(timer)
+  }, [placedCard, rivalPlacedCard])
+
+  useEffect(() => {
+    if (!battleReady) {
+      setBattlePhase("idle")
+      setBattleOutcome(null)
+      setShowOutcomeModal(false)
+      return
+    }
+
+    setBattlePhase("shake")
+    const shakeTimer = window.setTimeout(() => {
+      setBattlePhase("flip")
+    }, 600)
+
+    return () => window.clearTimeout(shakeTimer)
+  }, [battleReady])
+
+  useEffect(() => {
+    if (
+      battlePhase !== "flip" ||
+      !placedCard ||
+      !rivalPlacedCard ||
+      battleOutcome
+    ) {
+      return
+    }
+
+    const resolveTimer = window.setTimeout(() => {
+      if (placedCard === rivalPlacedCard) {
+        setBattleOutcome("draw")
+        setShowOutcomeModal(true)
+        return
+      }
+
+      const playerWins = CARD_BEATS[placedCard] === rivalPlacedCard
+      setBattleOutcome(playerWins ? "player" : "rival")
+      setShowOutcomeModal(true)
+    }, 720)
+
+    return () => window.clearTimeout(resolveTimer)
+  }, [battlePhase, placedCard, rivalPlacedCard, battleOutcome])
+
   const handleSelectCard = (card: Card, index: number) => {
     setSelectedCard(null)
     setSelectedIndex(null)
@@ -92,12 +175,14 @@ export default function SectionGame() {
 
   const handleUse = () => {
     if (!selectedCard || !revealCardRef.current) return
+    if (selectedIndex === null) return
     const target = document.getElementById("player-card")
     if (!target) return
 
     const from = revealCardRef.current.getBoundingClientRect()
     const to = target.getBoundingClientRect()
 
+    setPlayerHand((prev) => prev.filter((_, idx) => idx !== selectedIndex))
     setMovingPlayerCard({ card: selectedCard, from, to })
     setMovePlayerActive(false)
     setSelectedCard(null)
@@ -220,7 +305,9 @@ export default function SectionGame() {
               aspectRatio: "5 / 7",
             }}
             className={cn(
-              "border border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center",
+              "border border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center battle-card-container",
+              battlePhase === "shake" && "battle-card-shake",
+              battlePhase === "flip" && "battle-card-flip",
               rivalPlacedCard
                 ? "bg-white/15"
                 : "bg-white/10 delay-150 animate-[pulse_1500ms_infinite_linear]",
@@ -276,7 +363,9 @@ export default function SectionGame() {
               aspectRatio: "5 / 7",
             }}
             className={cn(
-              "border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center",
+              "border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center battle-card-container",
+              battlePhase === "shake" && "battle-card-shake",
+              battlePhase === "flip" && "battle-card-flip",
               placedCard
                 ? "bg-white/15"
                 : "bg-white/10 animate-[pulse_1500ms_infinite_linear]",
@@ -301,8 +390,13 @@ export default function SectionGame() {
       </div>
 
       <div
-        className="relative w-80 sm:w-96 h-48 sm:h-56 flex items-end justify-center"
-        style={{ perspective: 600 }}
+        id="game-pad"
+        className="relative w-80 sm:w-96 h-48 sm:h-56"
+        style={{
+          perspective: 600,
+          transform: battleReady ? "translateY(72px)" : "translateY(0px)",
+          transition: "transform 320ms cubic-bezier(0.4, 0.0, 0.2, 1)",
+        }}
       >
         <nav className="-top-12 sm:-top-20 absolute flex justify-between text-white h-14 -left-14 -right-14">
           <button className="absolute active:scale-98 flex items-center justify-center left-12 sm:left-2 -top-10 size-10">
@@ -342,7 +436,7 @@ export default function SectionGame() {
 
           <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-200 border-yellow-500 border-2">
             <span className="text-5xl -rotate-6">💵</span>
-            <div className="absolute text-[0.65rem] leading-none bottom-[120%] text-white font-medium">
+            <div className="absolute text-[0.65rem] leading-none bottom-[125%] text-white font-semibold">
               Feeling <br />
               Confident?
             </div>
@@ -372,63 +466,75 @@ export default function SectionGame() {
           </button>
         </nav>
 
-        {PLAYER_HAND.map((card, idx) => {
-          const fanOffsets = [-80, 0, 80]
-          const rotations = [-12, 0, 12]
-          const lift = [8, 14, 8]
-          const isActive = activeHandIndex === idx
-          const baseTransform = `translateX(${fanOffsets[idx]}px) translateY(${-lift[idx]}px) rotate(${rotations[idx]}deg)`
-          const hoverTransform = `translateX(${fanOffsets[idx]}px) translateY(-30px) rotate(${rotations[idx]}deg)`
-          const closedTransform =
-            "translateX(0px) translateY(26px) rotate(0deg)"
-          const openDelay = idx * 90
-          return (
-            <div
-              key={`${card}-${idx}`}
-              className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl flex items-center justify-center text-base font-bold bg-white shadow-xl transition-[transform,box-shadow] duration-200 ease-out select-none"
-              style={{
-                aspectRatio: "5 / 7",
-                transform: fanOpened
-                  ? isActive
-                    ? hoverTransform
-                    : baseTransform
-                  : closedTransform,
-                transformOrigin: "bottom center",
-                transition: fanOpened
-                  ? undefined
-                  : `transform 555ms ease-out ${openDelay}ms`,
-              }}
-              onMouseEnter={(event) => {
-                // Early return if fan is not opened
-                if (!fanOpened) return
+        <div
+          className={cn(
+            "relative w-full h-full flex items-end justify-center transition-opacity duration-300",
+            battleReady ? "opacity-0 pointer-events-none" : "opacity-100",
+          )}
+        >
+          {playerHand.map((handCard, idx) => {
+            const card = handCard.card
+            const count = playerHand.length
+            const fanOffsets =
+              count === 1 ? [0] : count === 2 ? [-60, 60] : [-80, 0, 80]
+            const rotations =
+              count === 1 ? [0] : count === 2 ? [-10, 10] : [-12, 0, 12]
+            const lift = count === 1 ? [10] : count === 2 ? [8, 8] : [8, 14, 8]
+            const isActive = activeHandIndex === idx
+            const baseTransform = `translateX(${fanOffsets[idx]}px) translateY(-${lift[idx]}px) rotate(${rotations[idx]}deg)`
+            const hoverTransform = `translateX(${fanOffsets[idx]}px) translateY(-30px) rotate(${rotations[idx]}deg)`
+            const closedTransform =
+              "translateX(0px) translateY(26px) rotate(0deg)"
+            const openDelay = idx * 90
 
-                const target = event.currentTarget
-                if (!isActive) {
-                  target.style.transform = hoverTransform
-                }
-                target.style.boxShadow = "0 24px 36px rgba(0,0,0,0.24)"
-              }}
-              onMouseLeave={(event) => {
-                // Early return if fan is not opened
-                if (!fanOpened) return
+            return (
+              <div
+                key={handCard.id}
+                className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl flex items-center justify-center text-base font-bold bg-white shadow-xl transition-all duration-200 ease-out select-none"
+                style={{
+                  aspectRatio: "5 / 7",
+                  transform: fanOpened
+                    ? isActive
+                      ? hoverTransform
+                      : baseTransform
+                    : closedTransform,
+                  transformOrigin: "bottom center",
+                  transition: fanOpened
+                    ? undefined
+                    : `transform 555ms ease-out ${openDelay}ms`,
+                }}
+                onMouseEnter={(event) => {
+                  // Early return if fan is not opened
+                  if (!fanOpened) return
 
-                const target = event.currentTarget
-                if (!isActive) {
-                  target.style.transform = baseTransform
-                }
-                target.style.boxShadow = "0 18px 30px rgba(0,0,0,0.2)"
-              }}
-              onClick={() => handleSelectCard(card, idx)}
-            >
-              <div className="flex flex-col items-center gap-1.5 text-black">
-                <div className="text-5xl leading-none">
-                  {CARD_INITIAL[card]}
+                  const target = event.currentTarget
+                  if (!isActive) {
+                    target.style.transform = hoverTransform
+                  }
+                  target.style.boxShadow = "0 24px 36px rgba(0,0,0,0.24)"
+                }}
+                onMouseLeave={(event) => {
+                  // Early return if fan is not opened
+                  if (!fanOpened) return
+
+                  const target = event.currentTarget
+                  if (!isActive) {
+                    target.style.transform = baseTransform
+                  }
+                  target.style.boxShadow = "0 18px 30px rgba(0,0,0,0.2)"
+                }}
+                onClick={() => handleSelectCard(card, idx)}
+              >
+                <div className="flex flex-col items-center gap-1.5 text-black">
+                  <div className="text-5xl leading-none">
+                    {CARD_INITIAL[card]}
+                  </div>
+                  <div className="text-sm">{card}</div>
                 </div>
-                <div className="text-sm">{card}</div>
               </div>
-            </div>
-          )
-        })}
+            )
+          })}
+        </div>
       </div>
 
       {selectedCard && (
@@ -568,6 +674,52 @@ export default function SectionGame() {
         </div>
       )}
 
+      {showOutcomeModal && battleOutcome && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70"
+            onClick={() => setShowOutcomeModal(false)}
+            aria-label="Dismiss outcome"
+          />
+          <div
+            className={cn(
+              "relative z-10 backdrop-blur-lg px-10 py-6 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
+              battleOutcome === "player" &&
+                "bg-cza-green/10 border-cza-green/30",
+              battleOutcome === "rival" && "bg-cza-red/10 border-cza-red/30",
+              battleOutcome === "draw" && "bg-white/10 border-white/30",
+            )}
+          >
+            <p className="text-xs tracking-[0.35em] text-white/60">
+              BATTLE RESULT
+            </p>
+
+            <h3
+              className={cn(
+                "mt-3 text-4xl font-black tracking-tight",
+                battleOutcome === "player" && "text-cza-green",
+                battleOutcome === "rival" && "text-cza-red",
+                battleOutcome === "draw" && "text-white",
+              )}
+            >
+              {battleOutcome === "player"
+                ? "YOU WIN"
+                : battleOutcome === "rival"
+                  ? "YOU LOSE"
+                  : "DRAW"}
+            </h3>
+            <p className="mt-2 text-sm text-white/70">
+              {battleOutcome === "draw"
+                ? "Both combatants matched power."
+                : battleOutcome === "player"
+                  ? "Your card outplayed the rival this round."
+                  : "Rival bested you this time."}
+            </p>
+          </div>
+        </div>
+      )}
+
       <style global>{`
         @keyframes rivalFade {
           0% {
@@ -582,6 +734,61 @@ export default function SectionGame() {
           100% {
             opacity: 0;
           }
+        }
+
+        @keyframes battleCardShake {
+          0% {
+            transform: translateX(0px) rotate(0deg);
+          }
+          20% {
+            transform: translateX(-4px) rotate(-1deg);
+          }
+          40% {
+            transform: translateX(4px) rotate(1deg);
+          }
+          60% {
+            transform: translateX(-3px) rotate(-1deg);
+          }
+          80% {
+            transform: translateX(3px) rotate(1deg);
+          }
+          100% {
+            transform: translateX(0px) rotate(0deg);
+          }
+        }
+
+        @keyframes battleCardFlip {
+          0% {
+            transform: rotateY(0deg) translateZ(0px);
+          }
+          35% {
+            transform: rotateY(-22deg) translateZ(4px);
+          }
+          50% {
+            transform: rotateY(-180deg) translateZ(8px);
+          }
+          65% {
+            transform: rotateY(-22deg) translateZ(4px);
+          }
+          100% {
+            transform: rotateY(0deg) translateZ(0px);
+          }
+        }
+
+        .battle-card-container {
+          transform-style: preserve-3d;
+          backface-visibility: hidden;
+          perspective: 1000px;
+        }
+
+        .battle-card-shake {
+          animation: battleCardShake 180ms ease-in-out 3;
+          transform-origin: center;
+        }
+
+        .battle-card-flip {
+          animation: battleCardFlip 620ms cubic-bezier(0.35, 0, 0.2, 1) forwards;
+          transform-origin: center;
         }
       `}</style>
     </main>
