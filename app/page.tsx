@@ -5,6 +5,7 @@ import { generateUUID } from "@/lib/utils"
 
 import SectionGame from "@/components/SectionGame"
 import Spinner from "@/components/Spinner"
+import SectionHome from "@/components/SectionHome"
 
 const PREP_STEPS = ["IN", "3", "2", "1", "GO!"]
 
@@ -92,16 +93,5 @@ export default function Home() {
     )
   }
 
-  return (
-    <main className="relative flex min-h-dvh items-center justify-center bg-black">
-      <div className="absolute bg-radial from-cza-red/7 to-cza-red/15 inset-0" />
-      <button
-        type="button"
-        className="relative z-10 px-6 py-3 text-white border border-white/20"
-        onClick={() => setIsSearching(true)}
-      >
-        PLAY
-      </button>
-    </main>
-  )
+  return <SectionHome onPlayGame={() => setIsSearching(true)} />
 }

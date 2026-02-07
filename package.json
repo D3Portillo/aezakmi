@@ -10,8 +10,6 @@
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
-    "@worldcoin/minikit-js": "^1.9.8",
-    "blo": "^2.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "eruda": "^3.4.3",

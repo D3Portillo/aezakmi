@@ -1,9 +1,9 @@
 "use client"
 
-import { Facehash } from "facehash"
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import Spinner from "@/components/Spinner"
+import AddressBlock from "@/components/AddressBlock"
 import { cn } from "@/lib/utils"
 
 import { FaHeart } from "react-icons/fa6"
@@ -411,12 +411,7 @@ export default function SectionGame() {
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <div className="flex items-center gap-3">
               <div className="size-10 rounded-xl overflow-hidden">
-                <Facehash
-                  colors={["#d62828", "#3aff6b", "#7b5cff", "#ffae03"]}
-                  enableBlink
-                  name="agent-47"
-                  size="100%"
-                />
+                <AddressBlock name="agent-47" />
               </div>
 
               <div>
@@ -451,12 +446,7 @@ export default function SectionGame() {
                 id="rival-face"
                 className="size-10 rounded-xl overflow-hidden"
               >
-                <Facehash
-                  colors={["#d62828", "#3aff6b", "#7b5cff", "#ffae03"]}
-                  enableBlink
-                  name="rrd-47"
-                  size="100%"
-                />
+                <AddressBlock name="rrd-47" />
               </div>
             </div>
           </div>

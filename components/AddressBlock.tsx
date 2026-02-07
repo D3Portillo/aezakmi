@@ -1,23 +1,13 @@
-import { blo } from "blo"
-import type { Address } from "viem"
+import { Facehash, type FacehashProps } from "facehash"
 
-interface AddressBlockProps {
-  address?: Address
-  size?: number
-}
-
-export default function AddressBlock({ address, size = 8 }: AddressBlockProps) {
+export default function AddressBlock({ name, ...props }: FacehashProps) {
   return (
-    <div className="border-2 AddressBlock border-white/15 rounded-lg overflow-hidden">
-      <figure
-        style={{
-          width: `calc(var(--spacing) * ${size})`,
-          height: `calc(var(--spacing) * ${size})`,
-          backgroundImage: `url(${blo(address || "0x11CCFF", 16)})`,
-          filter: "sepia(1) saturate(0.5) brightness(0.7) contrast(1.2)",
-        }}
-        className="bg-cover shrink-0"
-      />
-    </div>
+    <Facehash
+      colors={["#d62828", "#3aff6b", "#7b5cff", "#ffae03"]}
+      enableBlink
+      name={name}
+      size="100%"
+      {...props}
+    />
   )
 }
