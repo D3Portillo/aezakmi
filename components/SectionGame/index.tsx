@@ -553,8 +553,6 @@ export default function SectionGame() {
             }}
             className={cn(
               "border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center battle-card-container",
-              battlePhase === "shake" && "battle-card-shake",
-              battlePhase === "flip" && "battle-card-flip",
               placedCard
                 ? "bg-white/15"
                 : "bg-white/10 animate-[pulse_1500ms_infinite_linear]",
@@ -564,17 +562,13 @@ export default function SectionGame() {
               <div
                 className="w-full h-full rounded-lg overflow-hidden"
                 style={{
-                  backgroundImage: `url(${cardsFaceUp ? CARD_ART[placedCard] : CARD_BACK_ART})`,
+                  backgroundImage: `url(${CARD_ART[placedCard]})`,
                   backgroundSize: "cover",
                   backgroundPosition: "center",
                   backgroundRepeat: "no-repeat",
                   boxShadow: "inset 0 0 22px rgba(0,0,0,0.45)",
                 }}
-                aria-label={
-                  cardsFaceUp
-                    ? `${placedCard} card face`
-                    : "Hidden player card"
-                }
+                aria-label={`${placedCard} card face`}
               />
             ) : (
               <p className="text-xs opacity-40 text-center p-2">
@@ -825,9 +819,7 @@ export default function SectionGame() {
                   movingPlayerCard.to.height / movingPlayerCard.from.height
                 })`
               : "translate(0px, 0px) scale(1)",
-            transition: "transform 320ms ease-out, opacity 120ms ease-out",
-            transitionDelay: movePlayerActive ? "0ms, 224ms" : "0ms, 0ms",
-            opacity: movePlayerActive ? 0 : 1,
+            transition: "transform 320ms ease-out",
           }}
           onTransitionEnd={() => {
             setPlacedCard(movingPlayerCard.card)
@@ -871,7 +863,6 @@ export default function SectionGame() {
               : "translate(0px, 0px)",
             transition: "transform 320ms ease-out",
             opacity: 1,
-            animation: moveRivalActive ? "rivalFade 320ms ease-out" : "none",
           }}
           onTransitionEnd={() => {
             setRivalPlacedCard(movingRivalCard.card)
