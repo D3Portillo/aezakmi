@@ -4,6 +4,7 @@ import AddressBlock from "@/components/AddressBlock"
 
 import { beautifyAddress } from "@/lib/utils"
 import { FiEdit3 } from "react-icons/fi"
+import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 
 const MOCK_ACCOUNT = {
   name: "NyousStark",
@@ -75,32 +76,21 @@ export default function SectionHome({
             </div>
             <button
               type="button"
-              className="text-sm font-semibold text-cza-green rounded-xl border border-cza-green/40 px-3 py-1 flex items-center gap-1"
+              className="text-sm font-semibold text-cza-green rounded-full border border-cza-green/40 px-3 py-1 flex items-center gap-1"
             >
               <FiEdit3 />
               <span>Edit</span>
             </button>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
             {MOCK_DECK.map((card) => (
-              <article
-                key={card.id}
-                className="flex overflow-hidden bg-linear-to-b border border-cza-red/50 from-cza-red/0 to-cza-red/7 rounded-xl flex-col gap-2"
-              >
-                <div className="aspect-5/7">
-                  <img
-                    src={card.image}
-                    className="size-full object-cover"
-                    loading="lazy"
-                    alt=""
-                  />
-                </div>
-                <div className="px-3 whitespace-nowrap pb-3 text-xs flex items-center justify-between text-white/80">
-                  <span className="uppercase font-bold">{card.label}</span>
-                  <span>LVL {card.level}</span>
-                </div>
-              </article>
+              <Card
+                key={`deck-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+              />
             ))}
           </div>
 
@@ -113,5 +103,45 @@ export default function SectionHome({
         </div>
       </section>
     </main>
+  )
+}
+
+function Card({
+  type,
+  imageURL,
+  level,
+}: {
+  type: string
+  imageURL: string
+  level?: number
+}) {
+  const Icon =
+    type === "Cowboy"
+      ? IconSheriffStar
+      : type === "Zombie"
+        ? IconSkull
+        : IconEye
+
+  return (
+    <article className="flex overflow-hidden bg-linear-to-b border border-cza-red/50 from-cza-red/0 to-cza-red/7 rounded-xl flex-col gap-2">
+      <div className="aspect-5/7">
+        <img
+          src={imageURL}
+          className="size-full object-cover"
+          loading="lazy"
+          alt=""
+        />
+      </div>
+      <div className="px-3 whitespace-nowrap pb-3 text-xs flex items-center justify-between text-white/80">
+        <div className="uppercase flex items-center gap-2 font-bold">
+          <div className="size-3 grid place-items-center">
+            <Icon />
+          </div>
+          <div className="hidden sm:block">{type}</div>
+        </div>
+
+        <span>LVL {level || "1"}</span>
+      </div>
+    </article>
   )
 }
