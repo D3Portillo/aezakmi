@@ -896,11 +896,7 @@ export default function SectionGame() {
               backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
             }}
-          >
-            <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/30 to-transparent text-white text-xs font-semibold text-center py-1">
-              Hidden card
-            </div>
-          </div>
+          />
         </div>
       )}
 

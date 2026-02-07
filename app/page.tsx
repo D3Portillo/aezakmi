@@ -74,9 +74,7 @@ export default function Home() {
     return () => window.clearTimeout(timer)
   }, [isSearching])
 
-  // if (isGameStarted) return <SectionGame />
-
-  return <SectionGame />
+  if (isGameStarted) return <SectionGame />
 
   if (showPrepare) {
     return <PrepareScreen onFinish={() => setIsGameStarted(true)} />
