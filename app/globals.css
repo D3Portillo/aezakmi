@@ -7,8 +7,9 @@
 
 html,
 body {
-  touch-action: none;
+  touch-action: pan-y;
   user-select: none;
+  overflow-y: auto;
 }
 
 html {
