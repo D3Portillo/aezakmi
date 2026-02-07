@@ -530,7 +530,7 @@ export default function SectionGame() {
               <div className="h-5 w-px -rotate-6 bg-white/20" aria-hidden />
 
               <div className="flex items-baseline gap-2">
-                <span className="text-xs uppercase text-white/60">GAME</span>
+                <span className="text-xs uppercase text-white/60">ROUND</span>
                 <span className="font-bold text-white">
                   {currentMatch} / {MAX_MATCHES}
                 </span>
@@ -628,8 +628,14 @@ export default function SectionGame() {
             <strong className="ml-1">x{playerHearts}</strong>
           </button>
 
-          <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-200 border-yellow-500 border-2">
-            <span className="text-5xl -rotate-6">💵</span>
+          <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-100 border-yellow-500 border-2">
+            <figure className="min-w-22 pointer-events-none scale-95 -rotate-9">
+              <img
+                className="w-full"
+                src="https://i.redd.it/h53ukrijn2cy.gif"
+                alt=""
+              />
+            </figure>
             <div className="absolute text-[0.65rem] leading-none bottom-[125%] text-white font-semibold">
               Feeling <br />
               Confident?
@@ -772,13 +778,25 @@ export default function SectionGame() {
               )}
             </div>
 
-            <div style={{ filter: "drop-shadow(4px 4px black)" }}>
+            <div
+              style={{
+                filter:
+                  selectedCard === "Alien"
+                    ? "drop-shadow(4px 4px rgba(0,255,0,0.4))"
+                    : "drop-shadow(4px 4px rgba(255,0,0,0.4))",
+              }}
+            >
               <button
                 style={{
-                  minWidth: "10rem",
+                  minWidth: "11rem",
                   clipPath: "polygon(5% 5%, 100% 0, 95% 95%, 0% 100%)",
                 }}
-                className="px-10 active:scale-98 group Button flex justify-center items-center text-black py-4 bg-linear-to-l from-cza-green via-yellow-300 to-cza-green"
+                className={cn(
+                  "px-10 active:scale-98 group Button flex justify-center items-center text-black py-4 bg-linear-to-l",
+                  selectedCard === "Alien"
+                    ? "from-cza-green via-yellow-300 to-cza-green"
+                    : "from-red-500 via-yellow-500 to-red-500",
+                )}
                 onClick={handleUse}
               >
                 <style scoped>{`
@@ -898,19 +916,19 @@ export default function SectionGame() {
             className={cn(
               "relative z-10 backdrop-blur-lg px-10 py-7 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
               battleOutcome === "player" &&
-                "bg-cza-green/10 border-cza-green/30",
+                "bg-cza-green-neon/10 border-cza-green-neon/30",
               battleOutcome === "rival" && "bg-cza-red/10 border-cza-red/30",
-              battleOutcome === "draw" && "bg-white/10 border-white/30",
+              battleOutcome === "draw" && "bg-white/5 border-white/20",
             )}
           >
-            <p className="text-xs tracking-[0.25em] text-white/60">
-              BATTLE RESULT
+            <p className="text-xs tracking-[0.25em] text-white">
+              ROUND RESULTS
             </p>
 
             <h3
               className={cn(
                 "mt-2 mb-1 text-4xl font-black tracking-tight",
-                battleOutcome === "player" && "text-cza-green",
+                battleOutcome === "player" && "text-cza-green-neon",
                 battleOutcome === "rival" && "text-cza-red",
                 battleOutcome === "draw" && "text-white",
               )}
@@ -928,33 +946,24 @@ export default function SectionGame() {
       {finalWinner && finalRewards && finalBannerVisible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/80" aria-hidden />
-          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-b from-[#120418] via-[#220826] to-[#0b0210] px-10 py-12 shadow-[0_25px_80px_rgba(0,0,0,0.6)]">
-            <p className="text-xs uppercase tracking-[0.5em] text-white/60">
-              Match Winner
+          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green-neon/25 to-black/90 backdrop-blur-lg px-10 py-12">
+            <p className="text-xs tracking-[0.5em] text-white/60">
+              GAME WINNER
             </p>
             <h2 className="mt-4 text-5xl sm:text-6xl font-black tracking-tight">
               {finalWinner === "player" ? "NyousStark" : "Arthur"}
             </h2>
-            <p className="mt-3 text-base text-white/70">
-              {finalWinner === "player"
-                ? "Congratulations on your victory!"
-                : "Better luck next time."}
-            </p>
 
             <div className="mt-10 grid grid-cols-2 gap-6">
-              <div className="rounded-2xl border border-white/15 bg-white/5 py-5">
-                <p className="text-xs uppercase tracking-[0.4em] text-white/60">
-                  Tokens
-                </p>
-                <p className="mt-2 text-3xl font-black text-cza-yellow">
+              <div className="rounded-2xl border border-white/10 bg-white/5 py-5">
+                <p className="text-xs text-white">Points Earned</p>
+                <p className="mt-2 text-3xl font-black text-white">
                   {finalRewards.tokens.toLocaleString()}
                 </p>
               </div>
-              <div className="rounded-2xl border border-white/15 bg-white/5 py-5">
-                <p className="text-xs uppercase tracking-[0.4em] text-white/60">
-                  USDC Earned
-                </p>
-                <p className="mt-2 text-3xl font-black text-cza-green">
+              <div className="rounded-2xl border border-white/10 bg-white/5 py-5">
+                <p className="text-xs text-white">USDC Earned</p>
+                <p className="mt-2 text-3xl font-black text-cza-green-neon">
                   {`$${finalRewards.usd.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
