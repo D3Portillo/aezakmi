@@ -1,17 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import useSWR from "swr"
+import { Fragment, useEffect, useState } from "react"
+import { usePrivy } from "@privy-io/react-auth"
 
 import AddressBlock from "@/components/AddressBlock"
 
 import { beautifyAddress, cn } from "@/lib/utils"
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 import { GiUpgrade } from "react-icons/gi"
-
-const MOCK_ACCOUNT = {
-  name: "NyousStark",
-  address: "0x8f7cA47E2fe1b4a9b5b4C3298bA39e12C9339Bd7",
-}
+import { FiCopy } from "react-icons/fi"
+import { publicClient } from "@/lib/mainnet"
 
 type DeckCard = {
   id: string
@@ -71,9 +70,26 @@ export default function SectionHome({
   onPlayGame: () => void
 }) {
   const [previewCard, setPreviewCard] = useState<DeckCard | null>(null)
+  const [walletMenuOpen, setWalletMenuOpen] = useState(false)
+  const { logout, user, login, authenticated: isConnected } = usePrivy()
+
+  const EVM_ADDRESS = user?.wallet?.address
+  const formattedAddress = EVM_ADDRESS
+    ? beautifyAddress(EVM_ADDRESS)
+    : "Loading..."
+
+  const { data: ens = null } = useSWR(
+    EVM_ADDRESS ? `ens.${EVM_ADDRESS}` : null,
+    async () => {
+      if (!EVM_ADDRESS) return null
+      return await publicClient.getEnsName({ address: EVM_ADDRESS as any })
+    },
+  )
+
+  const username = ens || user?.email?.address?.split("@")[0] || "PlayerOne"
 
   return (
-    <main className="w-full max-w-3xl pb-44 gap-6 mx-auto flex flex-col">
+    <main className="w-full max-w-3xl sm:pt-5 pb-44 gap-6 mx-auto flex flex-col">
       <div className="p-4 flex items-center gap-4">
         <div className="flex flex-col items-start gap-1">
           <div className="bg-white text-xs font-bold text-black px-1.5 py-0.5 rounded-md">
@@ -84,17 +100,82 @@ export default function SectionHome({
           </div>
         </div>
 
-        <div className="flex grow items-center gap-3 justify-end">
-          <div className="text-right">
-            <p className="text-sm font-bold">{MOCK_ACCOUNT.name}</p>
-            <p className="text-xs text-white/70">
-              {beautifyAddress(MOCK_ACCOUNT.address)}
-            </p>
+        {isConnected ? (
+          <div className="flex h-10 grow items-center gap-3 justify-end">
+            <div className="text-right">
+              <p className="text-sm font-bold">{username}</p>
+              <p className="text-xs text-white/70">{formattedAddress}</p>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setWalletMenuOpen((prev) => !prev)}
+                className="size-10 cursor-pointer rounded-lg overflow-hidden"
+                aria-expanded={walletMenuOpen}
+              >
+                <AddressBlock name={username} />
+              </button>
+
+              {walletMenuOpen && (
+                <Fragment>
+                  <div
+                    role="button"
+                    tabIndex={-1}
+                    onClick={() => setWalletMenuOpen(false)}
+                    className="inset-0 fixed z-9"
+                  />
+                  <div className="absolute z-10 right-0 mt-2 w-48 rounded-xl border border-white/15 bg-black shadow-lg p-2">
+                    <button
+                      type="button"
+                      className="w-full flex items-center text-left text-xs p-3 rounded-lg hover:bg-white/7"
+                      onClick={() => {
+                        navigator.clipboard.writeText(EVM_ADDRESS || "")
+                        setWalletMenuOpen(false)
+                      }}
+                    >
+                      <div className="grow">
+                        <div className="font-bold text-cza-green">Wallet</div>
+                        <div className="font-mono text-xs text-white">
+                          <span>{formattedAddress}</span>
+                        </div>
+                      </div>
+                      <FiCopy className="text-white text-lg" />
+                    </button>
+
+                    <div className="h-px my-2 bg-white/10 w-full" />
+
+                    <button
+                      type="button"
+                      className="w-full h-10 text-left text-xs text-white p-3 rounded-lg hover:bg-white/7"
+                      onClick={() => {
+                        setWalletMenuOpen(false)
+                        logout()
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </Fragment>
+              )}
+            </div>
           </div>
-          <div className="size-10 rounded-lg overflow-hidden">
-            <AddressBlock name="lobby-agent" />
+        ) : (
+          <div className="flex h-10 grow justify-end">
+            <div
+              role="button"
+              tabIndex={-1}
+              onClick={() => login()}
+              className="flex group cursor-pointer items-center gap-3.5"
+            >
+              <span className="text-sm font-semibold group-hover:underline underline-offset-4">
+                Sign In
+              </span>
+              <div className="size-10 rounded-lg overflow-hidden">
+                <AddressBlock colors={["#ff0000"]} name="ZZ" />
+              </div>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <section className="Deck px-4 sm:pt-6 w-full max-w-2xl mx-auto">

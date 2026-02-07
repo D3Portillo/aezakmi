@@ -6,6 +6,7 @@ import { Toaster } from "sonner"
 
 import { AlertProvider } from "@/components/Alert"
 import ErudaProvider from "@/components/ErudaProdiver"
+import Providers from "@/components/Providers"
 
 const nextFont = Inter({
   subsets: [],
@@ -46,7 +47,9 @@ export default function RootLayout({
           position="top-center"
         />
         <AlertProvider />
-        <ErudaProvider>{children}</ErudaProvider>
+        <ErudaProvider>
+          <Providers>{children}</Providers>
+        </ErudaProvider>
       </body>
     </html>
   )
