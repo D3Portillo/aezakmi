@@ -12,11 +12,13 @@ import { GiBombingRun } from "react-icons/gi"
 type Card = "Cowboy" | "Zombie" | "Alien"
 
 const PLAYER_HAND: Card[] = ["Cowboy", "Zombie", "Alien"]
-const CARD_INITIAL: Record<Card, string> = {
-  Cowboy: "C",
-  Zombie: "Z",
-  Alien: "A",
+const CARD_ART: Record<Card, string> = {
+  Cowboy: "/cards/cowboy.png",
+  Zombie: "/cards/zombie.png",
+  Alien: "/cards/alien.png",
 }
+
+const CARD_BACK_ART = "/cards/back.png"
 
 const CARD_BEATS: Record<Card, Card> = {
   Cowboy: "Zombie",
@@ -78,6 +80,12 @@ export default function SectionGame() {
   } | null>(null)
   const [finalBannerVisible, setFinalBannerVisible] = useState(false)
   const [timeLeft, setTimeLeft] = useState(120)
+  const [cardsFaceUp, setCardsFaceUp] = useState(false)
+  const [cardArtFailed, setCardArtFailed] = useState<Record<Card, boolean>>({
+    Cowboy: false,
+    Zombie: false,
+    Alien: false,
+  })
 
   const [movingPlayerCard, setMovingPlayerCard] = useState<{
     card: Card
@@ -156,6 +164,23 @@ export default function SectionGame() {
   }, [])
 
   useEffect(() => {
+    const entries = Object.entries(CARD_ART) as [Card, string][]
+    entries.forEach(([card, src]) => {
+      const img = new window.Image()
+      img.onerror = () =>
+        setCardArtFailed((prev) =>
+          prev[card]
+            ? prev
+            : {
+                ...prev,
+                [card]: true,
+              },
+        )
+      img.src = src
+    })
+  }, [])
+
+  useEffect(() => {
     const interval = window.setInterval(() => {
       setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
     }, 1000)
@@ -190,6 +215,16 @@ export default function SectionGame() {
 
     return () => window.clearTimeout(shakeTimer)
   }, [battleReady])
+
+  useEffect(() => {
+    if (battlePhase !== "flip" || !placedCard || !rivalPlacedCard) {
+      setCardsFaceUp(false)
+      return
+    }
+
+    const revealTimer = window.setTimeout(() => setCardsFaceUp(true), 320)
+    return () => window.clearTimeout(revealTimer)
+  }, [battlePhase, placedCard, rivalPlacedCard])
 
   useEffect(() => {
     if (
@@ -457,12 +492,21 @@ export default function SectionGame() {
             )}
           >
             {rivalPlacedCard ? (
-              <div className="flex flex-col items-center gap-1 text-white">
-                <div className="text-2xl leading-none">
-                  {CARD_INITIAL[rivalPlacedCard]}
-                </div>
-                <div className="text-[11px] uppercase">{rivalPlacedCard}</div>
-              </div>
+              <div
+                className="w-full h-full rounded-lg overflow-hidden"
+                style={{
+                  backgroundImage: `url(${cardsFaceUp ? CARD_ART[rivalPlacedCard] : CARD_BACK_ART})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                  boxShadow: "inset 0 0 22px rgba(0,0,0,0.45)",
+                }}
+                aria-label={
+                  cardsFaceUp
+                    ? `${rivalPlacedCard} card face`
+                    : "Hidden rival card"
+                }
+              />
             ) : (
               <p className="text-xs opacity-40 text-center p-2">Rival card</p>
             )}
@@ -517,12 +561,21 @@ export default function SectionGame() {
             )}
           >
             {placedCard ? (
-              <div className="flex flex-col items-center gap-1 text-white">
-                <div className="text-2xl leading-none">
-                  {CARD_INITIAL[placedCard]}
-                </div>
-                <div className="text-[11px] uppercase">{placedCard}</div>
-              </div>
+              <div
+                className="w-full h-full rounded-lg overflow-hidden"
+                style={{
+                  backgroundImage: `url(${cardsFaceUp ? CARD_ART[placedCard] : CARD_BACK_ART})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
+                  boxShadow: "inset 0 0 22px rgba(0,0,0,0.45)",
+                }}
+                aria-label={
+                  cardsFaceUp
+                    ? `${placedCard} card face`
+                    : "Hidden player card"
+                }
+              />
             ) : (
               <p className="text-xs opacity-40 text-center p-2">
                 Pick your
@@ -637,9 +690,13 @@ export default function SectionGame() {
             return (
               <div
                 key={handCard.id}
-                className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl flex items-center justify-center text-base font-bold bg-white shadow-xl transition-all duration-200 ease-out select-none"
+                className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl overflow-hidden shadow-xl transition-all duration-200 ease-out select-none"
                 style={{
                   aspectRatio: "5 / 7",
+                  backgroundImage: `url(${CARD_ART[card]})`,
+                  backgroundSize: "cover",
+                  backgroundPosition: "center",
+                  backgroundRepeat: "no-repeat",
                   transform: fanOpened
                     ? isActive
                       ? hoverTransform
@@ -672,12 +729,12 @@ export default function SectionGame() {
                 }}
                 onClick={() => handleSelectCard(card, idx)}
               >
-                <div className="flex flex-col items-center gap-1.5 text-black">
-                  <div className="text-5xl leading-none">
-                    {CARD_INITIAL[card]}
+                <div className="absolute inset-0 bg-black/10" aria-hidden />
+                {cardArtFailed[card] && (
+                  <div className="absolute inset-0 flex items-center justify-center text-white text-sm font-semibold bg-black/40">
+                    {card}
                   </div>
-                  <div className="text-sm">{card}</div>
-                </div>
+                )}
               </div>
             )
           })}
@@ -699,7 +756,7 @@ export default function SectionGame() {
             <div
               key={revealKey}
               ref={revealCardRef}
-              className="w-64 sm:w-72 border-2 border-black/90 rounded-2xl bg-white shadow-2xl flex flex-col items-center justify-center transition-[transform,opacity,filter] duration-500 ease-out will-change-transform"
+              className="w-64 sm:w-72 border-2 border-black/90 rounded-2xl shadow-2xl relative overflow-hidden transition-[transform,opacity,filter] duration-500 ease-out will-change-transform"
               style={{
                 transform: revealOpen
                   ? "rotateY(0deg) rotateX(0deg) scale(1)"
@@ -708,12 +765,17 @@ export default function SectionGame() {
                 aspectRatio: "5 / 7",
                 filter: revealOpen ? "blur(0px)" : "blur(1px)",
                 transformOrigin: "bottom center",
+                backgroundImage: `url(${CARD_ART[selectedCard]})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
               }}
             >
-              <div className="text-6xl leading-none">
-                {CARD_INITIAL[selectedCard]}
-              </div>
-              <div className="mt-3 text-lg font-semibold">{selectedCard}</div>
+              {cardArtFailed[selectedCard] && (
+                <div className="absolute inset-0 flex items-center justify-center text-white text-xl font-semibold bg-black/50">
+                  {selectedCard}
+                </div>
+              )}
             </div>
 
             <div style={{ filter: "drop-shadow(4px 4px black)" }}>
@@ -773,13 +835,20 @@ export default function SectionGame() {
             setMovePlayerActive(false)
           }}
         >
-          <div className="w-full h-full border-2 border-black/90 rounded-xl bg-white shadow-2xl flex flex-col items-center justify-center">
-            <div className="text-3xl leading-none">
-              {CARD_INITIAL[movingPlayerCard.card]}
-            </div>
-            <div className="mt-1 text-xs font-semibold">
-              {movingPlayerCard.card}
-            </div>
+          <div
+            className="w-full h-full border-2 border-black/90 rounded-xl shadow-2xl relative overflow-hidden"
+            style={{
+              backgroundImage: `url(${CARD_ART[movingPlayerCard.card]})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          >
+            {cardArtFailed[movingPlayerCard.card] && (
+              <div className="absolute inset-0 flex items-center justify-center text-white text-sm font-semibold bg-black/50">
+                {movingPlayerCard.card}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -810,12 +879,17 @@ export default function SectionGame() {
             setMoveRivalActive(false)
           }}
         >
-          <div className="w-full h-full border-2 border-black/90 rounded-xl bg-white shadow-2xl flex flex-col items-center justify-center">
-            <div className="text-3xl leading-none">
-              {CARD_INITIAL[movingRivalCard.card]}
-            </div>
-            <div className="mt-1 text-xs font-semibold">
-              {movingRivalCard.card}
+          <div
+            className="w-full h-full border-2 border-black/90 rounded-xl shadow-2xl relative overflow-hidden"
+            style={{
+              backgroundImage: `url(${CARD_BACK_ART})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+            }}
+          >
+            <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-black/80 via-black/30 to-transparent text-white text-xs font-semibold text-center py-1">
+              Hidden card
             </div>
           </div>
         </div>
