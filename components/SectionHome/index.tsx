@@ -1,10 +1,12 @@
 "use client"
 
+import { useEffect, useState } from "react"
+
 import AddressBlock from "@/components/AddressBlock"
 
 import { beautifyAddress, cn } from "@/lib/utils"
-import { FiEdit3 } from "react-icons/fi"
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
+import { GiUpgrade } from "react-icons/gi"
 
 const MOCK_ACCOUNT = {
   name: "NyousStark",
@@ -39,46 +41,47 @@ const MOCK_DECK: DeckCard[] = [
   },
 ]
 
-// 3x3 = 9 total game cards
-const MOCK_ALL_CARDS: DeckCard[] = [
-  ...Array.from({ length: 3 }).map((_, i) => ({
-    type: "Cowboy",
-    id: `cowboy-${i}`,
-    label: "Cowboy",
-    image: "/cards/cowboy.png",
-    level: Math.floor(Math.random() * 15) + 1,
-  })),
+const MOCK_COWBOYS = Array.from({ length: 3 }).map((_, i) => ({
+  type: "Cowboy",
+  id: `cowboy-${i}`,
+  label: "Cowboy",
+  image: "/cards/cowboy.png",
+  level: Math.floor(Math.random() * 15) + 1,
+}))
 
-  ...Array.from({ length: 3 }).map((_, i) => ({
-    type: "Alien",
-    id: `alien-${i}`,
-    label: "Alien",
-    image: "/cards/alien.png",
-    level: Math.floor(Math.random() * 15) + 1,
-  })),
+const MOCK_ZOMBIES = Array.from({ length: 3 }).map((_, i) => ({
+  type: "Zombie",
+  id: `zombie-${i}`,
+  label: "Zombie",
+  image: "/cards/zombie.png",
+  level: Math.floor(Math.random() * 15) + 1,
+}))
 
-  ...Array.from({ length: 3 }).map((_, i) => ({
-    type: "Zombie",
-    id: `zombie-${i}`,
-    label: "Zombie",
-    image: "/cards/zombie.png",
-    level: Math.floor(Math.random() * 15) + 1,
-  })),
-]
+const MOCK_ALIENS = Array.from({ length: 3 }).map((_, i) => ({
+  type: "Alien",
+  id: `alien-${i}`,
+  label: "Alien",
+  image: "/cards/alien.png",
+  level: Math.floor(Math.random() * 15) + 1,
+}))
 
 export default function SectionHome({
   onPlayGame,
 }: {
   onPlayGame: () => void
 }) {
+  const [previewCard, setPreviewCard] = useState<DeckCard | null>(null)
+
   return (
-    <main className="w-full max-w-3xl pb-20 gap-6 mx-auto flex flex-col">
+    <main className="w-full max-w-3xl pb-44 gap-6 mx-auto flex flex-col">
       <div className="p-4 flex items-center gap-4">
         <div className="flex flex-col items-start gap-1">
           <div className="bg-white text-xs font-bold text-black px-1.5 py-0.5 rounded-md">
-            RANK #4
+            TOP RANK #4
           </div>
-          <div className="font-bold text-sm text-cza-green">2,500 CZA</div>
+          <div className="font-bold text-sm text-cza-green">
+            2,500 Points (CZA)
+          </div>
         </div>
 
         <div className="flex grow items-center gap-3 justify-end">
@@ -94,19 +97,24 @@ export default function SectionHome({
         </div>
       </div>
 
-      <section className="Deck min-h-[55dvh] px-4 sm:pt-6 w-full max-w-2xl mx-auto">
+      <section className="Deck px-4 sm:pt-6 w-full max-w-2xl mx-auto">
         <div className="rounded-2xl border border-white/15 bg-white/5 p-4 flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs uppercase text-white/50">Your deck</p>
-              <h2 className="text-lg font-semibold">Arena Loadout</h2>
+              <p className="text-xs text-white/50">YOUR ARENA</p>
+              <h2 className="text-lg font-semibold">Game Champions</h2>
             </div>
             <button
-              type="button"
-              className="text-sm font-semibold text-cza-green rounded-full border border-cza-green/40 px-3 py-1 flex items-center gap-1"
+              onClick={() => {
+                document?.querySelector("#AllCards")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                })
+              }}
+              className="text-sm font-semibold text-cza-green rounded-full border border-cza-green/40 px-3 py-1 flex items-center gap-1.5"
             >
-              <FiEdit3 />
-              <span>Edit</span>
+              <GiUpgrade className="scale-110" />
+              <span>CUSTOMIZE</span>
             </button>
           </div>
 
@@ -117,6 +125,7 @@ export default function SectionHome({
                 type={card.label}
                 imageURL={card.image}
                 level={card.level}
+                onClick={() => setPreviewCard(card)}
               />
             ))}
           </div>
@@ -125,33 +134,86 @@ export default function SectionHome({
             onClick={onPlayGame}
             className="w-full mt-6 rounded-xl bg-cza-red text-white font-bold py-3"
           >
-            PLAY NOW
+            PLAY GAME
           </button>
         </div>
       </section>
 
-      <section className="px-4 pt-12 AllCards w-full max-w-2xl mx-auto">
+      <section
+        id="AllCards"
+        className="px-4 pt-12 AllCards w-full max-w-2xl mx-auto"
+      >
         <div className="flex uppercase items-center justify-center gap-3">
           <span className="text-cza-red text-lg" aria-hidden>
             ․★✦
           </span>
-          <h2 className="text-lg text-center font-semibold">Card Collection</h2>
+          <h2 className="text-lg text-center font-semibold">CARD COLLECTION</h2>
           <span className="text-cza-red text-lg" aria-hidden>
             ✦★․
           </span>
         </div>
 
-        <div className="grid mt-6 grid-cols-3 gap-2 sm:gap-3">
-          {MOCK_ALL_CARDS.map((card) => (
-            <Card
-              key={`deck-${card.id}`}
-              type={card.label}
-              imageURL={card.image}
-              level={card.level}
-            />
-          ))}
+        <div className="mt-8 bg-linear-to-l via-cza-red/50 pt-3 pb-4">
+          <p className="mb-2 text-xs text-center text-white/50">
+            Customize game aesthetics (C)
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {MOCK_COWBOYS.map((card) => (
+              <Card
+                key={`c-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 bg-linear-to-l via-red-500/50 pt-3 pb-4">
+          <p className="mb-2 text-xs text-center text-white/50">
+            Customize game aesthetics (Z)
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {MOCK_ZOMBIES.map((card) => (
+              <Card
+                key={`z-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-10 bg-linear-to-l via-cza-green/15 pt-3 pb-4">
+          <p className="mb-2 text-xs text-center text-white/50">
+            Customize game aesthetics (A)
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {MOCK_ALIENS.map((card) => (
+              <Card
+                key={`a-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
+          </div>
         </div>
       </section>
+
+      {previewCard && (
+        <CardPreviewModal
+          card={previewCard}
+          onClose={() => setPreviewCard(null)}
+        />
+      )}
     </main>
   )
 }
@@ -160,10 +222,12 @@ function Card({
   type,
   imageURL,
   level,
+  onClick,
 }: {
   type: string
   imageURL: string
   level?: number
+  onClick?: () => void
 }) {
   const Icon =
     type === "Cowboy"
@@ -176,10 +240,11 @@ function Card({
     <article
       className={cn(
         type === "Alien"
-          ? "bg-linear-to-b shadow-lg shadow-cza-green-neon/10 border border-cza-green-neon/40 from-cza-green-neon/0 to-cza-green-neon/7"
+          ? "bg-linear-to-b shadow-lg shadow-cza-green/10 border border-cza-green/40 from-cza-green/0 to-cza-green/7"
           : "bg-linear-to-b shadow-lg shadow-cza-red/15 border border-cza-red/50 from-cza-red/0 to-cza-red/7",
         "flex overflow-hidden rounded-xl flex-col gap-2",
       )}
+      onClick={onClick}
     >
       <div className="aspect-5/7">
         <img
@@ -200,5 +265,45 @@ function Card({
         <span>LVL {level || "1"}</span>
       </div>
     </article>
+  )
+}
+
+function CardPreviewModal({
+  card,
+  onClose,
+}: {
+  card: DeckCard
+  onClose: () => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setOpen(true))
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-40 flex items-center justify-center">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/70"
+        onClick={onClose}
+        aria-label="Close preview"
+      />
+      <div
+        className={cn(
+          "relative z-10 w-full px-2 max-w-[24rem] transition-all duration-300",
+          open ? "translate-y-0 opacity-100" : "translate-y-10 opacity-0",
+        )}
+      >
+        <div className="aspect-5/7 w-full rounded-2xl overflow-hidden shadow-2xl">
+          <img
+            src={card.image}
+            alt={`${card.label} card`}
+            className="size-full object-cover"
+          />
+        </div>
+      </div>
+    </div>
   )
 }

@@ -17,7 +17,7 @@ function PrepareScreen({ onFinish }: { onFinish: () => void }) {
   )
 
   return (
-    <main className="relative overflow-hidden flex min-h-dvh items-center justify-center bg-black">
+    <main className="relative overflow-hidden flex min-h-screen items-center justify-center bg-black">
       <div className="absolute bg-radial from-cza-red/7 to-cza-red/25 inset-0" />
       <div className="relative z-10 flex flex-col items-center gap-4">
         <div
@@ -83,11 +83,11 @@ export default function Home() {
 
   if (isSearching) {
     return (
-      <main className="relative flex min-h-dvh items-center justify-center bg-black">
+      <main className="relative flex min-h-screen items-center justify-center bg-black">
         <div className="absolute bg-radial from-cza-red/7 to-cza-red/15 inset-0" />
         <div className="relative animate-in fade-in z-10 flex flex-col items-center gap-5 text-white">
           <Spinner />
-          <div className="text-sm">Searching for a game...</div>
+          <div className="text-sm">Searching open games...</div>
         </div>
       </main>
     )

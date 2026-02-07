@@ -405,7 +405,7 @@ export default function SectionGame() {
   }
 
   return (
-    <main className="relative overflow-x-hidden flex flex-col items-center min-h-dvh pb-6 gap-6">
+    <main className="relative overflow-x-hidden flex flex-col items-center min-h-screen pb-6 gap-6">
       <section className="w-full p-2 max-w-3xl">
         <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 p-3 text-white shadow-lg">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
@@ -453,7 +453,7 @@ export default function SectionGame() {
         </div>
       </section>
 
-      <div className="w-full min-h-[70dvh] pb-16 grow flex flex-col items-center justify-center">
+      <div className="w-full min-h-[70vh] pb-16 grow flex flex-col items-center justify-center">
         <div className="grow w-full flex flex-col items-center justify-center gap-4">
           <div
             className={cn(
@@ -902,7 +902,7 @@ export default function SectionGame() {
             className={cn(
               "relative z-10 backdrop-blur-lg px-10 py-7 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
               battleOutcome === "player" &&
-                "bg-cza-green-neon/10 border-cza-green-neon/30",
+                "bg-cza-green/10 border-cza-green/30",
               battleOutcome === "rival" && "bg-cza-red/10 border-cza-red/30",
               battleOutcome === "draw" && "bg-white/5 border-white/20",
             )}
@@ -914,7 +914,7 @@ export default function SectionGame() {
             <h3
               className={cn(
                 "mt-2 mb-1 text-4xl font-black tracking-tight",
-                battleOutcome === "player" && "text-cza-green-neon",
+                battleOutcome === "player" && "text-cza-green",
                 battleOutcome === "rival" && "text-cza-red",
                 battleOutcome === "draw" && "text-white",
               )}
@@ -932,7 +932,7 @@ export default function SectionGame() {
       {finalWinner && finalRewards && finalBannerVisible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/80" aria-hidden />
-          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green-neon/25 to-black/90 backdrop-blur-lg px-10 py-12">
+          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green/25 to-black/90 backdrop-blur-lg px-10 py-12">
             <p className="text-xs tracking-[0.5em] text-white/60">
               GAME WINNER
             </p>
@@ -949,7 +949,7 @@ export default function SectionGame() {
               </div>
               <div className="rounded-2xl border border-white/10 bg-white/5 py-5">
                 <p className="text-xs text-white">USDC Earned</p>
-                <p className="mt-2 text-3xl font-black text-cza-green-neon">
+                <p className="mt-2 text-3xl font-black text-cza-green">
                   {`$${finalRewards.usd.toLocaleString(undefined, {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2,
