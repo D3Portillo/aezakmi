@@ -17,8 +17,8 @@ function PrepareScreen({ onFinish }: { onFinish: () => void }) {
   )
 
   return (
-    <main className="relative overflow-hidden flex min-h-screen items-center justify-center bg-black">
-      <div className="absolute bg-radial from-cza-red/7 to-cza-red/25 inset-0" />
+    <main className="relative overflow-hidden flex min-h-screen items-center justify-center bg-black/70">
+      <div className="absolute bg-radial from-cza-black/7 to-cza-red/15 inset-0" />
       <div className="relative z-10 flex flex-col items-center gap-4">
         <div
           key={renderKey}

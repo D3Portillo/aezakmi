@@ -185,7 +185,7 @@ export default function SectionHome({
                   block: "start",
                 })
               }}
-              className="text-sm active:scale-98 font-semibold text-cza-lime rounded-full border border-cza-lime/50 px-3 py-1 flex items-center gap-1.5"
+              className="text-sm active:scale-98 font-semibold text-cza-green rounded-full border border-cza-green/30 px-3 py-1 flex items-center gap-1.5"
             >
               <GiUpgrade className="scale-110" />
               <span>CUSTOMIZE</span>
