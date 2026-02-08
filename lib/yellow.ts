@@ -22,15 +22,23 @@ import {
   createEIP712AuthMessageSigner,
   createAuthVerifyMessage,
   RPCMethod,
+  type AuthVerifyResponse,
+  createTransferMessage,
 } from "@erc7824/nitrolite"
 import { useAuth } from "./wallet"
 
 import { ONE_DAY_IN_SECONDS } from "./constants"
 
+type YellowEvent = {
+  method: string
+  params?: unknown
+}
+
 export const useYellowNetwork = () => {
   const [isSessionActive, setIsSessionActive] = useState(false)
+  const [latestEvent, setLatestEvent] = useState<YellowEvent | null>(null)
 
-  let messageSignerRef = useRef<MessageSigner | null>(null)
+  const messageSignerRef = useRef<MessageSigner | null>(null)
 
   const { evmAddress } = useAuth()
   const { signMessage } = useSignMessage({
@@ -43,26 +51,11 @@ export const useYellowNetwork = () => {
   })
 
   const { data: ws = null } = useSWR("yellow.main", () => {
-    const ws = new WebSocket("wss://clearnet-sandbox.yellow.com/ws")
-
-    ws.onopen = () => {
-      console.debug("[useYellowNetwork] WebSocket connected")
-    }
-
-    ws.onmessage = (event) => {
-      const message = parseAnyRPCResponse(event.data)
-      console.debug("[useYellowNetwork] Message:", message)
-    }
-
-    ws.onerror = (error) => {
-      console.debug("[useYellowNetwork] Error:", { error })
-    }
-
-    return ws
+    return new WebSocket("wss://clearnet-sandbox.yellow.com/ws")
   })
 
   // @see https://docs.yellow.org/docs/build/quick-start/#step-3-create-application-session
-  async function setupMessageSigner() {
+  const setupMessageSigner = async () => {
     if (!evmAddress) throw new Error("Wallet not connected")
 
     const { signature } = await signMessage(
@@ -94,20 +87,29 @@ export const useYellowNetwork = () => {
     }
   }
 
-  async function createSession(partnerAddress: Address) {
+  const createSession = async (partnerAddress: Address) => {
     if (!ws) throw new Error("WebSocket not connected")
 
     const { messageSigner, sessionAddress, walletClient } =
       await setupMessageSigner()
 
+    const firstParticipant =
+      BigInt(sessionAddress) > BigInt(partnerAddress)
+        ? partnerAddress
+        : sessionAddress
+
+    const secondParticipant =
+      firstParticipant === sessionAddress ? partnerAddress : sessionAddress
+
     const definition: RPCAppDefinition = {
       application: "cza-game-v1",
       challenge: 0,
-      participants: [sessionAddress, partnerAddress],
+      // Make sure we keep same order
+      participants: [firstParticipant, secondParticipant],
       protocol: RPCProtocolVersion.NitroRPC_0_4,
       quorum: 100,
       weights: [50, 50],
-      nonce: Date.now(),
+      nonce: Date.now() / (1_000 * 60 * 5), // Increment in chunks of 5min
     }
 
     const authParams = {
@@ -162,10 +164,10 @@ export const useYellowNetwork = () => {
 
     // Send to ClearNode
     ws.send(sessionMessage)
-    await new Promise((resolve, reject) => {
+    const session: AuthVerifyResponse = await new Promise((resolve, reject) => {
       ws.addEventListener("message", function handler(event) {
         const message = parseAnyRPCResponse(event.data)
-        if (message.method === RPCMethod.AuthVerify) {
+        if (message.method === RPCMethod.AuthVerify && message.params.success) {
           resolve(message)
         } else reject()
       })
@@ -176,25 +178,40 @@ export const useYellowNetwork = () => {
     setIsSessionActive(true)
 
     console.debug("✅ Session created!")
-    return { definition }
+
+    return { definition, session }
   }
 
-  async function sendPayment(amount: BigInt, recipient: Address) {
-    const paymentData = {
-      type: "payment",
-      amount: amount.toString(),
-      recipient,
-      timestamp: Date.now(),
+  const sendEvent = async (
+    recipient: string,
+    eventType: string,
+    payload: any,
+  ) => {
+    if (!ws) throw new Error("WebSocket not connected")
+    if (!isSessionActive) {
+      throw new Error("Yellow Network session is not active")
     }
 
-    ws?.send(JSON.stringify(paymentData))
-    console.debug(`💸 Sent ${amount} instantly!`)
+    console.debug({ eventType, payload })
+    ws.send(
+      await createTransferMessage(messageSignerRef.current!, {
+        allocations: [],
+        destination: recipient as any,
+        destination_user_tag: JSON.stringify({
+          type: eventType,
+          data: payload,
+        }),
+      }),
+    )
+
+    console.debug(`[sendEvent] Sent: ${eventType}`, payload)
   }
 
   return {
     ws,
     createSession,
-    sendPayment,
+    sendEvent,
     isSessionActive,
+    latestEvent,
   }
 }

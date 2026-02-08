@@ -122,17 +122,13 @@ export default function Home() {
   }
 
   if (isGameStarted && activeMatch) {
-    return (
-      <SectionGame match={activeMatch} currentPlayerId={evmAddress} />
-    )
+    return <SectionGame match={activeMatch} currentPlayerId={evmAddress} />
   }
 
   if (isGameStarted) {
     return (
       <main className="min-h-screen flex items-center justify-center text-white">
-        <div className="text-sm text-white/60">
-          Preparing match details...
-        </div>
+        <div className="text-sm text-white/60">Preparing match details...</div>
       </main>
     )
   }

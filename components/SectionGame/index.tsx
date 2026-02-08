@@ -1,5 +1,6 @@
 "use client"
 
+import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
@@ -7,10 +8,11 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import Spinner from "@/components/Spinner"
 import AddressBlock from "@/components/AddressBlock"
 import { useAuth } from "@/lib/wallet"
-import { cn } from "@/lib/utils"
+import { beautifyAddress, cn } from "@/lib/utils"
 
 import { FaHeart } from "react-icons/fa6"
 import { GiBombingRun } from "react-icons/gi"
+import { useYellowNetwork } from "@/lib/yellow"
 
 type Card = "Cowboy" | "Zombie" | "Alien"
 
@@ -30,6 +32,7 @@ const CARD_BEATS: Record<Card, Card> = {
 }
 
 const MAX_MATCHES = 3
+const GAME_CARD_EVENT = "cza.game.cardPlayed"
 
 type PlayerHandCard = {
   id: string
@@ -56,13 +59,19 @@ type SectionGameProps = {
   currentPlayerId?: string | null
 }
 
-const shortenAddress = (value?: string | null) =>
-  value ? `${value.slice(0, 6)}...${value.slice(-4)}` : null
-
 export default function SectionGame({
   match,
   currentPlayerId,
 }: SectionGameProps) {
+  const { createSession, isSessionActive, sendEvent } = useYellowNetwork()
+  const createSessionRef = useRef(createSession)
+  const sendEventRef = useRef(sendEvent)
+
+  useEffect(() => {
+    createSessionRef.current = createSession
+    sendEventRef.current = sendEvent
+  }, [createSession, sendEvent])
+
   const { username, formattedEvmAddress, evmAddress } = useAuth()
   const normalizedCurrentId =
     currentPlayerId?.toLowerCase() ?? evmAddress?.toLowerCase() ?? null
@@ -74,22 +83,21 @@ export default function SectionGame({
     ? players.find((player) => player.id.toLowerCase() !== normalizedCurrentId)
     : (players[1] ?? players[0] ?? null)
   const playerDisplayName =
-    currentPlayer?.username ??
-    username ??
-    formattedEvmAddress ??
-    shortenAddress(currentPlayer?.id ?? currentPlayerId ?? evmAddress) ??
-    "You"
-  const playerAvatarSeed =
-    currentPlayer?.username ??
-    username ??
-    currentPlayer?.id ??
-    currentPlayerId ??
-    evmAddress ??
-    "you"
+    currentPlayer?.username ?? username ?? formattedEvmAddress ?? "You"
+
   const opponentDisplayName =
-    opponentPlayer?.username ?? shortenAddress(opponentPlayer?.id) ?? "Opponent"
-  const opponentAvatarSeed =
-    opponentPlayer?.username ?? opponentPlayer?.id ?? "opponent"
+    opponentPlayer?.username ??
+    (opponentPlayer?.id ? beautifyAddress(opponentPlayer.id) : "Opponent")
+
+  const currentRoomId = match?.roomId ?? null
+  const playerSessionAddress =
+    currentPlayer?.id ?? currentPlayerId ?? evmAddress ?? null
+  const opponentAddress = opponentPlayer?.id
+    ? (opponentPlayer.id as Address)
+    : null
+
+  const [sessionRoomId, setSessionRoomId] = useState<string | null>(null)
+  const [sessionPending, setSessionPending] = useState(false)
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
   )
@@ -156,6 +164,54 @@ export default function SectionGame({
       }
     }
   }, [])
+
+  useEffect(() => {
+    if (!currentRoomId) {
+      setSessionRoomId(null)
+    }
+  }, [currentRoomId])
+
+  useEffect(() => {
+    if (!currentRoomId || !playerSessionAddress || !opponentAddress) {
+      return
+    }
+
+    if (sessionRoomId === currentRoomId || sessionPending) {
+      return
+    }
+
+    const creator = createSessionRef.current
+    if (!creator) {
+      return
+    }
+
+    let cancelled = false
+    setSessionPending(true)
+
+    creator(opponentAddress)
+      .then(() => {
+        if (cancelled) return
+        setSessionRoomId(currentRoomId)
+      })
+      .catch((error) => {
+        if (cancelled) return
+        console.error("[SectionGame] createSession failed", error)
+      })
+      .finally(() => {
+        if (cancelled) return
+        setSessionPending(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [
+    currentRoomId,
+    opponentAddress,
+    playerSessionAddress,
+    sessionPending,
+    sessionRoomId,
+  ])
 
   const advanceToNextMatch = useCallback(() => {
     if (finalWinner) return
@@ -240,6 +296,36 @@ export default function SectionGame({
     const timer = window.setTimeout(() => setBattleReady(true), 500)
     return () => window.clearTimeout(timer)
   }, [placedCard, rivalPlacedCard])
+
+  useEffect(() => {
+    if (
+      !placedCard ||
+      !currentRoomId ||
+      !opponentAddress ||
+      !playerSessionAddress ||
+      !isSessionActive
+    ) {
+      return
+    }
+
+    const dispatcher = sendEventRef.current
+    if (!dispatcher) return
+
+    dispatcher(opponentAddress, GAME_CARD_EVENT, {
+      roomId: currentRoomId,
+      card: placedCard,
+      playerId: playerSessionAddress,
+      issuedAt: Date.now(),
+    }).catch((error) => {
+      console.error("[SectionGame] sendEvent failed", error)
+    })
+  }, [
+    placedCard,
+    currentRoomId,
+    opponentAddress,
+    playerSessionAddress,
+    isSessionActive,
+  ])
 
   useEffect(() => {
     if (!battleReady) {
@@ -452,7 +538,7 @@ export default function SectionGame({
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <div id="current-player" className="flex items-center gap-3">
               <div className="size-10 rounded-xl overflow-hidden">
-                <AddressBlock name={playerAvatarSeed} />
+                <AddressBlock name={playerDisplayName} />
               </div>
 
               <div>
@@ -489,7 +575,7 @@ export default function SectionGame({
                 id="rival-face"
                 className="size-10 rounded-xl overflow-hidden"
               >
-                <AddressBlock name={opponentAvatarSeed} />
+                <AddressBlock name={opponentDisplayName} />
               </div>
             </div>
           </div>
