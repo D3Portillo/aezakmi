@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react"
 
 import Spinner from "@/components/Spinner"
 import AddressBlock from "@/components/AddressBlock"
+import { useAuth } from "@/lib/wallet"
 import { cn } from "@/lib/utils"
 
 import { FaHeart } from "react-icons/fa6"
@@ -49,6 +50,7 @@ const generateRewards = (winner: "player" | "rival") => {
 }
 
 export default function SectionGame() {
+  const { username } = useAuth()
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
   )
@@ -409,9 +411,9 @@ export default function SectionGame() {
       <section className="w-full p-2 max-w-3xl">
         <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 p-3 text-white shadow-lg">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div className="flex items-center gap-3">
+            <div id="current-player" className="flex items-center gap-3">
               <div className="size-10 rounded-xl overflow-hidden">
-                <AddressBlock name="agent-47" />
+                <AddressBlock name={username} />
               </div>
 
               <div>
@@ -419,7 +421,7 @@ export default function SectionGame() {
                   <span>YOU</span>
                 </div>
 
-                <div className="font-semibold text-sm">NyousStark</div>
+                <div className="font-semibold text-sm">{username}</div>
               </div>
             </div>
 
@@ -473,12 +475,9 @@ export default function SectionGame() {
               aspectRatio: "5 / 7",
             }}
             className={cn(
-              "border border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center battle-card-container",
+              "border bg-white/10 border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center battle-card-container",
               battlePhase === "shake" && "battle-card-shake",
               battlePhase === "flip" && "battle-card-flip",
-              rivalPlacedCard
-                ? "bg-white/15"
-                : "bg-white/10 delay-150 animate-[pulse_1500ms_infinite_linear]",
             )}
           >
             {rivalPlacedCard ? (
