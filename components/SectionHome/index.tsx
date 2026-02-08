@@ -130,7 +130,7 @@ export default function SectionHome({
                     >
                       <div className="grow">
                         <div className="font-bold text-cza-green">Wallet</div>
-                        <div className="font-mono text-xs text-white">
+                        <div className="text-xs text-white">
                           <span>{formattedEvmAddress}</span>
                         </div>
                       </div>

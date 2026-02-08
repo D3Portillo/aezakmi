@@ -740,7 +740,7 @@ export default function SectionGame() {
         <div className="fixed inset-0 z-20 flex items-center justify-center">
           <button
             type="button"
-            className="absolute backdrop-blur-xs inset-0 bg-black/50"
+            className="absolute backdrop-blur inset-0 bg-black/50"
             onClick={() => {
               setSelectedCard(null)
               setActiveHandIndex(null)
@@ -905,7 +905,7 @@ export default function SectionGame() {
           />
           <div
             className={cn(
-              "relative z-10 backdrop-blur-lg px-10 py-7 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
+              "relative z-10 backdrop-blur px-10 py-7 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
               battleOutcome === "player" &&
                 "bg-cza-green/10 border-cza-green/30",
               battleOutcome === "rival" && "bg-cza-red/10 border-cza-red/30",
@@ -936,8 +936,12 @@ export default function SectionGame() {
 
       {finalWinner && finalRewards && finalBannerVisible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div className="absolute inset-0 bg-black/80" aria-hidden />
-          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green/25 to-black/90 backdrop-blur-lg px-10 py-12">
+          <div
+            className="absolute inset-0 backdrop-blur bg-black/80"
+            aria-hidden
+          />
+
+          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green/25 to-black/90 backdrop-blur px-10 py-12">
             <p className="text-xs tracking-[0.5em] text-white/60">
               GAME WINNER
             </p>
