@@ -4,6 +4,7 @@ import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import Spinner from "@/components/Spinner"
 import AddressBlock from "@/components/AddressBlock"
@@ -11,8 +12,9 @@ import { useAuth } from "@/lib/wallet"
 import { beautifyAddress, cn } from "@/lib/utils"
 
 import { FaHeart } from "react-icons/fa6"
-import { GiBombingRun } from "react-icons/gi"
 import { useYellowNetwork } from "@/lib/yellow"
+import NukeAction from "./Nuke"
+import RetreatAction from "./Retreat"
 
 type Card = "Cowboy" | "Zombie" | "Alien"
 
@@ -33,6 +35,7 @@ const CARD_BEATS: Record<Card, Card> = {
 
 const MAX_MATCHES = 3
 const GAME_CARD_EVENT = "cza.game.cardPlayed"
+const GAME_NUKE_EVENT = "cza.game.nuke"
 
 type PlayerHandCard = {
   id: string
@@ -63,7 +66,9 @@ export default function SectionGame({
   match,
   currentPlayerId,
 }: SectionGameProps) {
-  const { createSession, isSessionActive, sendEvent } = useYellowNetwork()
+  const { createSession, isSessionActive, sendEvent, latestEvent } =
+    useYellowNetwork()
+  const router = useRouter()
   const createSessionRef = useRef(createSession)
   const sendEventRef = useRef(sendEvent)
 
@@ -98,6 +103,8 @@ export default function SectionGame({
 
   const [sessionRoomId, setSessionRoomId] = useState<string | null>(null)
   const [sessionPending, setSessionPending] = useState(false)
+  const [playerNukeUsed, setPlayerNukeUsed] = useState(false)
+  const [opponentNukeUsed, setOpponentNukeUsed] = useState(false)
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
   )
@@ -156,6 +163,7 @@ export default function SectionGame({
 
   const revealCardRef = useRef<HTMLDivElement | null>(null)
   const finalBannerTimeoutRef = useRef<number | null>(null)
+  const lastNukeEventRef = useRef<number | null>(null)
 
   useEffect(() => {
     return () => {
@@ -213,6 +221,61 @@ export default function SectionGame({
     sessionRoomId,
   ])
 
+  const handleRetreatConfirm = () => {
+    router.push("/")
+  }
+
+  const handleNukeConfirm = () => {
+    if (playerNukeUsed) {
+      return
+    }
+
+    setBattlePhase("idle")
+    setBattleReady(false)
+    setCardsFaceUp(false)
+    setPlacedCard(null)
+    setRivalPlacedCard(null)
+    setSelectedCard(null)
+    setSelectedIndex(null)
+    setActiveHandIndex(null)
+    setMovePlayerActive(false)
+    setMoveRivalActive(false)
+
+    setPlayerNukeUsed(true)
+
+    if (opponentNukeUsed) {
+      setBattleOutcome("draw")
+    } else {
+      setBattleOutcome("player")
+      setRivalHearts((prev) => Math.max(0, prev - 1))
+    }
+
+    setShowOutcomeModal(true)
+
+    if (
+      !isSessionActive ||
+      !opponentAddress ||
+      !playerSessionAddress ||
+      !currentRoomId
+    ) {
+      return
+    }
+
+    const dispatcher = sendEventRef.current
+    if (!dispatcher) return
+
+    const issuedAt = Date.now()
+    lastNukeEventRef.current = issuedAt
+
+    dispatcher(opponentAddress, GAME_NUKE_EVENT, {
+      roomId: currentRoomId,
+      playerId: playerSessionAddress,
+      issuedAt,
+    }).catch((error) => {
+      console.error("[SectionGame] sendEvent (nuke) failed", error)
+    })
+  }
+
   const advanceToNextMatch = useCallback(() => {
     if (finalWinner) return
     setShowOutcomeModal(false)
@@ -224,6 +287,8 @@ export default function SectionGame({
     setActiveHandIndex(null)
     setBattleReady(false)
     setBattlePhase("idle")
+    setPlayerNukeUsed(false)
+    setOpponentNukeUsed(false)
     setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
   }, [finalWinner])
 
@@ -325,6 +390,71 @@ export default function SectionGame({
     opponentAddress,
     playerSessionAddress,
     isSessionActive,
+  ])
+
+  useEffect(() => {
+    if (
+      !latestEvent ||
+      latestEvent.method !== GAME_NUKE_EVENT ||
+      !currentRoomId
+    ) {
+      return
+    }
+
+    const payload = latestEvent.params as {
+      roomId?: string
+      playerId?: string
+      issuedAt?: number
+    }
+
+    if (!payload?.roomId || payload.roomId !== currentRoomId) {
+      return
+    }
+
+    const sender = payload.playerId?.toLowerCase()
+    if (!sender || sender === normalizedCurrentId?.toLowerCase()) {
+      return
+    }
+
+    if (payload.issuedAt && lastNukeEventRef.current === payload.issuedAt) {
+      return
+    }
+
+    if (payload.issuedAt) {
+      lastNukeEventRef.current = payload.issuedAt
+    }
+
+    if (opponentNukeUsed) {
+      return
+    }
+
+    setBattlePhase("idle")
+    setBattleReady(false)
+    setCardsFaceUp(false)
+    setPlacedCard(null)
+    setRivalPlacedCard(null)
+    setSelectedCard(null)
+    setSelectedIndex(null)
+    setActiveHandIndex(null)
+    setMovePlayerActive(false)
+    setMoveRivalActive(false)
+
+    setOpponentNukeUsed(true)
+
+    if (playerNukeUsed) {
+      setBattleOutcome("draw")
+    } else {
+      setBattleOutcome("rival")
+      setPlayerHearts((prev) => Math.max(0, prev - 1))
+    }
+
+    setShowOutcomeModal(true)
+  }, [
+    latestEvent,
+    currentRoomId,
+    normalizedCurrentId,
+    opponentNukeUsed,
+    playerNukeUsed,
   ])
 
   useEffect(() => {
@@ -658,7 +788,7 @@ export default function SectionGame({
 
               <div className="flex w-20 items-baseline gap-2">
                 <span className="text-xs uppercase text-white/60">LOOT</span>
-                <span className="font-bold text-white">$0</span>
+                <span className="font-bold text-white">$13.4</span>
               </div>
             </div>
 
@@ -764,28 +894,15 @@ export default function SectionGame({
             </div>
           </button>
 
-          <button
-            className="relative active:scale-98 -rotate-6 py-4 bg-linear-to-br from-red-950 to-cza-red"
-            style={{
-              clipPath: "polygon(5% 9%, 80% 11%, 100% 100%, 0% 100%)",
-            }}
-          >
-            <span className="font-semibold text-lg block text-white pl-10 pr-14">
-              RETREAT
-            </span>
-          </button>
+          <RetreatAction
+            onConfirm={handleRetreatConfirm}
+            disabled={!!finalWinner}
+          />
 
-          <button
-            className="relative active:scale-98 rotate-6 py-4 bg-linear-to-br from-cza-red to-cza-yellow"
-            style={{
-              clipPath: "polygon(95% 9%, 20% 11%, 0% 100%, 100% 100%)",
-            }}
-          >
-            <span className="font-semibold text-lg flex items-center gap-2 text-white pl-14 pr-10">
-              <span>NUKE</span>
-              <GiBombingRun className="rotate-x-180 rotate-12" />
-            </span>
-          </button>
+          <NukeAction
+            onConfirm={handleNukeConfirm}
+            disabled={playerNukeUsed || !!finalWinner}
+          />
         </nav>
 
         <div
