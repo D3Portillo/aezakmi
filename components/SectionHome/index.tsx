@@ -253,7 +253,7 @@ export default function SectionHome({
           <button
             onClick={() => {
               if (isJoining) return
-              if (isConnected) return login()
+              if (!isConnected) return login()
               if (showTutorial) {
                 setBattleModalOpen(true)
               } else {
