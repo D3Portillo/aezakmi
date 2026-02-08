@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useState } from "react"
 import { generateUUID } from "@/lib/utils"
 
+import { IconSheriffStar } from "@/components/icons"
 import SectionGame from "@/components/SectionGame"
-import Spinner from "@/components/Spinner"
 import SectionHome from "@/components/SectionHome"
 
 const PREP_STEPS = ["IN", "3", "2", "1", "GO!"]
@@ -83,11 +83,13 @@ export default function Home() {
 
   if (isSearching) {
     return (
-      <main className="relative flex min-h-screen items-center justify-center bg-black">
-        <div className="absolute bg-radial from-cza-red/7 to-cza-red/15 inset-0" />
-        <div className="relative animate-in fade-in z-10 flex flex-col items-center gap-5 text-white">
-          <Spinner />
-          <div className="text-sm">Searching open games...</div>
+      <main className="relative bg-black/40 flex min-h-screen items-center justify-center">
+        <div className="absolute bg-radial from-black/15 to-black/30 inset-0" />
+        <div className="relative z-10 animate-in fade-in flex flex-col items-center gap-5 text-white">
+          <figure className="size-10 animate-[spin_2500ms_infinite_linear]">
+            <IconSheriffStar />
+          </figure>
+          <div className="text-sm">Searching games...</div>
         </div>
       </main>
     )

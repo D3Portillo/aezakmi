@@ -407,7 +407,7 @@ export default function SectionGame() {
   }
 
   return (
-    <main className="relative overflow-x-hidden flex flex-col items-center min-h-screen pb-6 gap-6">
+    <main className="relative bg-black/55 overflow-x-hidden flex flex-col items-center min-h-screen pb-6 gap-6">
       <section className="w-full p-2 max-w-3xl">
         <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 p-3 text-white shadow-lg">
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
@@ -475,7 +475,7 @@ export default function SectionGame() {
               aspectRatio: "5 / 7",
             }}
             className={cn(
-              "border bg-white/10 border-white/10 rounded-lg w-1/2 max-w-24 flex items-center justify-center battle-card-container",
+              "border bg-white/10 border-white/15 rounded-lg w-1/2 max-w-24 flex items-center justify-center battle-card-container",
               battlePhase === "shake" && "battle-card-shake",
               battlePhase === "flip" && "battle-card-flip",
             )}
@@ -504,9 +504,11 @@ export default function SectionGame() {
 
         <div className="w-full py-8 max-w-2xl">
           <div className="relative flex items-center justify-center">
-            <div className="absolute inset-x-0 h-px bg-white/20" aria-hidden />
+            <div className="grow">
+              <div className="h-px w-full bg-white/20" />
+            </div>
 
-            <div className="relative z-1 bg-black flex items-center gap-4 px-4 text-white/90">
+            <div className="flex items-center gap-4 px-4 text-white/90">
               <div className="flex w-20 items-baseline gap-2">
                 <span className="text-xs ml-auto uppercase text-white/60">
                   TIME
@@ -532,6 +534,10 @@ export default function SectionGame() {
                 <span className="font-bold text-white">$0</span>
               </div>
             </div>
+
+            <div className="grow">
+              <div className="h-px w-full bg-white/20" />
+            </div>
           </div>
         </div>
         <div className="grow w-full flex flex-col items-center justify-center gap-4">
@@ -541,7 +547,7 @@ export default function SectionGame() {
               aspectRatio: "5 / 7",
             }}
             className={cn(
-              "border border-white/10 rounded-lg w-1/3 max-w-24 flex items-center justify-center battle-card-container",
+              "border border-white/15 rounded-lg w-1/3 max-w-24 flex items-center justify-center battle-card-container",
               placedCard
                 ? "bg-white/15"
                 : "bg-white/10 animate-[pulse_1500ms_infinite_linear]",

@@ -1,15 +1,16 @@
 "use client"
 
-import { Fragment, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 
 import AddressBlock from "@/components/AddressBlock"
-
 import { cn } from "@/lib/utils"
+
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 import { GiUpgrade } from "react-icons/gi"
 import { FiCopy } from "react-icons/fi"
+import { MdArrowForward } from "react-icons/md"
+
 import { useAuth } from "@/lib/wallet"
-import Balatro from "../Balatro"
 
 type DeckCard = {
   id: string
@@ -80,236 +81,215 @@ export default function SectionHome({
   } = useAuth()
 
   return (
-    <Fragment>
-      <div className="fixed top-0 left-0 h-screen w-screen">
-        <div className="inset-0 absolute bg-black/80 backdrop-blur-xs z-1" />
-        <Balatro
-          spinRotation={-2}
-          spinSpeed={7}
-          color1="#d62828"
-          color2="#37f713"
-          color3="#000000"
-          contrast={5}
-          lighting={0.2}
-          spinAmount={0.05}
-          pixelFilter={100}
-          className="size-full"
-        />
-      </div>
-
-      <main className="w-full relative z-1 max-w-3xl sm:pt-5 pb-44 gap-6 mx-auto flex flex-col">
-        <div className="p-4 flex items-center gap-4">
-          <div className="flex flex-col items-start gap-1">
-            <div className="bg-white text-xs font-bold text-black px-1.5 py-0.5 rounded-md">
-              TOP RANK #4
-            </div>
-            <div className="font-bold text-sm text-cza-green">
-              2,500 Points (CZA)
-            </div>
+    <main className="w-full relative z-1 max-w-3xl sm:pt-5 pb-44 gap-6 mx-auto flex flex-col">
+      <div className="p-4 flex items-center gap-4">
+        <div className="flex flex-col items-start gap-1">
+          <div className="bg-white text-xs font-bold text-black px-1.5 py-0.5 rounded-md">
+            TOP RANK #4
           </div>
-
-          <div className="flex h-10 grow items-center gap-3 justify-end">
-            {isConnected ? (
-              <div className="relative">
-                <button
-                  type="button"
-                  className="flex items-center gap-3 cursor-pointer"
-                  onClick={() => setWalletMenuOpen((prev) => !prev)}
-                  aria-expanded={walletMenuOpen}
-                >
-                  <div className="text-right">
-                    <p className="text-sm font-bold">{username}</p>
-                    <p className="text-xs text-white/70">
-                      {formattedEvmAddress}
-                    </p>
-                  </div>
-
-                  <div className="size-10 rounded-lg overflow-hidden">
-                    <AddressBlock name={username} />
-                  </div>
-                </button>
-
-                {walletMenuOpen && (
-                  <>
-                    <button
-                      type="button"
-                      className="fixed inset-0 z-0"
-                      onClick={() => setWalletMenuOpen(false)}
-                      aria-label="Close wallet menu"
-                    />
-                    <div className="absolute z-10 right-0 mt-3 w-48 rounded-xl border border-white/15 bg-black shadow-lg p-2">
-                      <button
-                        type="button"
-                        className="w-full flex items-center text-left text-xs p-3 rounded-lg hover:bg-white/7"
-                        onClick={() => {
-                          navigator.clipboard.writeText(evmAddress || "")
-                          setWalletMenuOpen(false)
-                        }}
-                      >
-                        <div className="grow">
-                          <div className="font-bold text-cza-green">Wallet</div>
-                          <div className="font-mono text-xs text-white">
-                            <span>{formattedEvmAddress}</span>
-                          </div>
-                        </div>
-                        <FiCopy className="text-white text-lg" />
-                      </button>
-
-                      <div className="h-px my-2 bg-white/10 w-full" />
-
-                      <button
-                        type="button"
-                        className="w-full h-10 text-left text-xs text-white p-3 rounded-lg hover:bg-white/7"
-                        onClick={() => {
-                          setWalletMenuOpen(false)
-                          logout()
-                        }}
-                      >
-                        Disconnect
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ) : (
-              <div
-                role="button"
-                tabIndex={-1}
-                onClick={() => login()}
-                className="flex group cursor-pointer items-center gap-3.5"
-              >
-                <span className="text-sm font-semibold group-hover:underline underline-offset-4">
-                  Sign In
-                </span>
-                <div className="size-10 rounded-lg overflow-hidden">
-                  <AddressBlock colors={["#ff0000"]} name="ZZ" />
-                </div>
-              </div>
-            )}
+          <div className="font-bold text-sm text-cza-green">
+            2,500 Points (CZA)
           </div>
         </div>
 
-        <section className="Deck px-4 sm:pt-6 w-full max-w-2xl mx-auto">
-          <div className="rounded-2xl border border-white/15 bg-black/40 backdrop-blur p-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-white/50">YOUR ARENA</p>
-                <h2 className="text-lg font-semibold">Game Champions</h2>
-              </div>
+        <div className="flex h-10 grow items-center gap-3 justify-end">
+          {isConnected ? (
+            <div className="relative">
               <button
-                onClick={() => {
-                  document?.querySelector("#AllCards")?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  })
-                }}
-                className="text-sm font-semibold text-cza-green rounded-full border border-cza-green/40 px-3 py-1 flex items-center gap-1.5"
+                type="button"
+                className="flex items-center gap-3 cursor-pointer"
+                onClick={() => setWalletMenuOpen((prev) => !prev)}
+                aria-expanded={walletMenuOpen}
               >
-                <GiUpgrade className="scale-110" />
-                <span>CUSTOMIZE</span>
+                <div className="text-right">
+                  <p className="text-sm font-bold">{username}</p>
+                  <p className="text-xs text-white/70">{formattedEvmAddress}</p>
+                </div>
+
+                <div className="size-10 rounded-lg overflow-hidden">
+                  <AddressBlock name={username} />
+                </div>
               </button>
-            </div>
 
-            <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
-              {MOCK_DECK.map((card) => (
-                <Card
-                  key={`deck-${card.id}`}
-                  type={card.label}
-                  imageURL={card.image}
-                  level={card.level}
-                  onClick={() => setPreviewCard(card)}
-                />
-              ))}
-            </div>
+              {walletMenuOpen && (
+                <>
+                  <button
+                    type="button"
+                    className="fixed inset-0 z-0"
+                    onClick={() => setWalletMenuOpen(false)}
+                    aria-label="Close wallet menu"
+                  />
+                  <div className="absolute z-10 right-0 mt-3 w-48 rounded-xl border border-white/15 bg-black shadow-lg p-2">
+                    <button
+                      type="button"
+                      className="w-full flex items-center text-left text-xs p-3 rounded-lg hover:bg-white/7"
+                      onClick={() => {
+                        navigator.clipboard.writeText(evmAddress || "")
+                        setWalletMenuOpen(false)
+                      }}
+                    >
+                      <div className="grow">
+                        <div className="font-bold text-cza-green">Wallet</div>
+                        <div className="font-mono text-xs text-white">
+                          <span>{formattedEvmAddress}</span>
+                        </div>
+                      </div>
+                      <FiCopy className="text-white text-lg" />
+                    </button>
 
-            <button
-              onClick={onPlayGame}
-              className="w-full mt-6 rounded-xl bg-cza-red text-white font-bold py-3"
+                    <div className="h-px my-2 bg-white/10 w-full" />
+
+                    <button
+                      type="button"
+                      className="w-full h-10 text-left text-xs text-white p-3 rounded-lg hover:bg-white/7"
+                      onClick={() => {
+                        setWalletMenuOpen(false)
+                        logout()
+                      }}
+                    >
+                      Disconnect
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ) : (
+            <div
+              role="button"
+              tabIndex={-1}
+              onClick={() => login()}
+              className="flex group cursor-pointer items-center gap-3.5"
             >
-              PLAY GAME
+              <span className="text-sm font-semibold group-hover:underline underline-offset-4">
+                Sign In
+              </span>
+              <div className="size-10 rounded-lg overflow-hidden">
+                <AddressBlock colors={["#ff0000"]} name="ZZ" />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <section className="Deck px-4 sm:pt-6 w-full max-w-2xl mx-auto">
+        <div className="rounded-2xl border border-white/15 bg-black/40 backdrop-blur p-4 flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs text-white/50">YOUR ARENA</p>
+              <h2 className="text-lg font-semibold">Game Champions</h2>
+            </div>
+            <button
+              onClick={() => {
+                document?.querySelector("#AllCards")?.scrollIntoView({
+                  behavior: "smooth",
+                  block: "start",
+                })
+              }}
+              className="text-sm active:scale-98 font-semibold text-cza-lime rounded-full border border-cza-lime/50 px-3 py-1 flex items-center gap-1.5"
+            >
+              <GiUpgrade className="scale-110" />
+              <span>CUSTOMIZE</span>
             </button>
           </div>
-        </section>
 
-        <section
-          id="AllCards"
-          className="px-4 pt-12 AllCards w-full max-w-2xl mx-auto"
-        >
-          <div className="flex uppercase items-center justify-center gap-3">
-            <span className="text-cza-red text-lg" aria-hidden>
-              ․★✦
-            </span>
-            <h2 className="text-lg text-center font-semibold">
-              CARD COLLECTION
-            </h2>
-            <span className="text-cza-red text-lg" aria-hidden>
-              ✦★․
-            </span>
+          <div className="grid grid-cols-3 gap-1.5 sm:gap-3">
+            {MOCK_DECK.map((card) => (
+              <Card
+                key={`deck-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
           </div>
 
-          <div className="mt-8 bg-linear-to-l via-cza-red/50 pt-3 pb-4">
-            <p className="mb-2 text-xs text-center text-white/50">
-              Customize game aesthetics (C)
-            </p>
+          <button
+            onClick={onPlayGame}
+            className="w-full active:scale-98 flex items-center justify-center gap-4 mt-6 rounded-xl bg-cza-red text-white font-bold py-3"
+          >
+            <span>PLAY GAME</span>
+            <MdArrowForward className="text-xl scale-120" />
+          </button>
+        </div>
+      </section>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {MOCK_COWBOYS.map((card) => (
-                <Card
-                  key={`c-${card.id}`}
-                  type={card.label}
-                  imageURL={card.image}
-                  level={card.level}
-                  onClick={() => setPreviewCard(card)}
-                />
-              ))}
-            </div>
+      <section
+        id="AllCards"
+        className="px-4 pt-12 AllCards w-full max-w-2xl mx-auto"
+      >
+        <div className="flex uppercase items-center justify-center gap-3">
+          <span className="text-cza-red text-lg" aria-hidden>
+            ․★✦
+          </span>
+          <h2 className="text-xl text-center font-semibold">CARD COLLECTION</h2>
+          <span className="text-cza-red text-lg" aria-hidden>
+            ✦★․
+          </span>
+        </div>
+
+        <div className="mt-8 bg-linear-to-l via-cza-red/50 pt-3 pb-4">
+          <p className="mb-2 text-xs text-center text-white/50">
+            Customize game aesthetics (C)
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {MOCK_COWBOYS.map((card) => (
+              <Card
+                key={`c-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
           </div>
+        </div>
 
-          <div className="mt-10 bg-linear-to-l via-red-500/50 pt-3 pb-4">
-            <p className="mb-2 text-xs text-center text-white/50">
-              Customize game aesthetics (Z)
-            </p>
+        <div className="mt-10 bg-linear-to-l via-red-500/50 pt-3 pb-4">
+          <p className="mb-2 text-xs text-center text-white/50">
+            Customize game aesthetics (Z)
+          </p>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {MOCK_ZOMBIES.map((card) => (
-                <Card
-                  key={`z-${card.id}`}
-                  type={card.label}
-                  imageURL={card.image}
-                  level={card.level}
-                  onClick={() => setPreviewCard(card)}
-                />
-              ))}
-            </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {MOCK_ZOMBIES.map((card) => (
+              <Card
+                key={`z-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
           </div>
+        </div>
 
-          <div className="mt-10 bg-linear-to-l via-cza-green/15 pt-3 pb-4">
-            <p className="mb-2 text-xs text-center text-white/50">
-              Customize game aesthetics (A)
-            </p>
+        <div className="mt-10 bg-linear-to-l via-cza-green/15 pt-3 pb-4">
+          <p className="mb-2 text-xs text-center text-white/50">
+            Customize game aesthetics (A)
+          </p>
 
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {MOCK_ALIENS.map((card) => (
-                <Card
-                  key={`a-${card.id}`}
-                  type={card.label}
-                  imageURL={card.image}
-                  level={card.level}
-                  onClick={() => setPreviewCard(card)}
-                />
-              ))}
-            </div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            {MOCK_ALIENS.map((card) => (
+              <Card
+                key={`a-${card.id}`}
+                type={card.label}
+                imageURL={card.image}
+                level={card.level}
+                onClick={() => setPreviewCard(card)}
+              />
+            ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {previewCard && (
-          <CardPreviewModal
-            card={previewCard}
-            onClose={() => setPreviewCard(null)}
-          />
-        )}
-      </main>
-    </Fragment>
+      {previewCard && (
+        <CardPreviewModal
+          card={previewCard}
+          onClose={() => setPreviewCard(null)}
+        />
+      )}
+    </main>
   )
 }
 
@@ -337,7 +317,7 @@ function Card({
         type === "Alien"
           ? "bg-linear-to-b shadow-lg shadow-cza-green/10 border border-cza-green/40 from-cza-green/0 to-cza-green/7"
           : "bg-linear-to-b shadow-lg shadow-cza-red/15 border border-cza-red/50 from-cza-red/0 to-cza-red/7",
-        "flex overflow-hidden rounded-xl flex-col gap-2",
+        "flex cursor-pointer active:scale-98 overflow-hidden rounded-xl flex-col gap-2",
       )}
       onClick={onClick}
     >

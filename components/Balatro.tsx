@@ -161,18 +161,10 @@ export default function Balatro({
     applyCanvasCss()
 
     let program: Program
-    const qualityScale = isMobile ? 0.55 : 0.75
+    const baseResolution = isMobile ? 600 : 900
 
     function resize() {
-      const targetWidth = Math.max(
-        1,
-        Math.floor(container.offsetWidth * qualityScale),
-      )
-      const targetHeight = Math.max(
-        1,
-        Math.floor(container.offsetHeight * qualityScale),
-      )
-      renderer.setSize(targetWidth, targetHeight)
+      renderer.setSize(baseResolution, baseResolution)
       applyCanvasCss()
       if (program) {
         program.uniforms.iResolution.value = [
@@ -208,7 +200,7 @@ export default function Balatro({
         uLighting: { value: lighting },
         uSpinAmount: { value: spinAmount },
         uPixelFilter: {
-          value: pixelFilter * (isMobile ? 0.85 : 1) * qualityScale,
+          value: pixelFilter * (baseResolution / 800) * (isMobile ? 0.9 : 1),
         },
         uSpinEase: { value: spinEase },
         uIsRotate: { value: isRotate },
@@ -255,7 +247,7 @@ export default function Balatro({
         mouseFrameId = null
       })
     }
-    container.addEventListener("mousemove", handleMouseMove)
+    window.addEventListener("mousemove", handleMouseMove)
 
     function handleVisibilityChange() {
       renderActive = !document.hidden
@@ -266,7 +258,7 @@ export default function Balatro({
       cancelAnimationFrame(animationFrameId)
       if (mouseFrameId) cancelAnimationFrame(mouseFrameId)
       window.removeEventListener("resize", resize)
-      container.removeEventListener("mousemove", handleMouseMove)
+      window.removeEventListener("mousemove", handleMouseMove)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
       container.removeChild(gl.canvas)
       gl.getExtension("WEBGL_lose_context")?.loseContext()
@@ -287,5 +279,10 @@ export default function Balatro({
     mouseInteraction,
   ])
 
-  return <div ref={containerRef} className={cn("Balatro", className)} />
+  return (
+    <div
+      ref={containerRef}
+      className={cn("Balatro pointer-events-none", className)}
+    />
+  )
 }
