@@ -14,6 +14,7 @@ import { MdArrowForward } from "react-icons/md"
 import { IoCheckmarkSharp, IoCloseSharp } from "react-icons/io5"
 
 import { useAuth } from "@/lib/wallet"
+import { useYellowNetwork } from "@/lib/yellow"
 
 type DeckCard = {
   id: string
@@ -401,7 +402,7 @@ function BattleModal({
       />
       <div
         className={cn(
-          "relative z-10 w-full max-w-lg transition-all duration-300",
+          "relative z-10 w-full max-w-md transition-all duration-300",
           open ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
         )}
       >
