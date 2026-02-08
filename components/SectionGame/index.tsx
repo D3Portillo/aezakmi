@@ -4,12 +4,14 @@ import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useAtom } from "jotai"
 import { useRouter } from "next/navigation"
 
 import Spinner from "@/components/Spinner"
 import AddressBlock from "@/components/AddressBlock"
 import { useAuth } from "@/lib/wallet"
 import { beautifyAddress, cn } from "@/lib/utils"
+import { playerBalanceAtom } from "@/lib/state"
 
 import { FaHeart } from "react-icons/fa6"
 import { useYellowNetwork } from "@/lib/yellow"
@@ -49,6 +51,8 @@ const createInitialHand = (): PlayerHandCard[] =>
     id: nextCardId(),
     card,
   }))
+
+const randomBalanceBonus = () => 80 + Math.floor(Math.random() * 220)
 
 const generateRewards = (winner: "player" | "rival") => {
   const baseTokens = winner === "player" ? 320 : 180
@@ -100,6 +104,8 @@ export default function SectionGame({
   const opponentAddress = opponentPlayer?.id
     ? (opponentPlayer.id as Address)
     : null
+
+  const [, setPlayerBalance] = useAtom(playerBalanceAtom)
 
   const [sessionRoomId, setSessionRoomId] = useState<string | null>(null)
   const [sessionPending, setSessionPending] = useState(false)
@@ -301,6 +307,11 @@ export default function SectionGame({
       setBattleOutcome(null)
       setFinalBannerVisible(false)
 
+      if (winner === "player") {
+        const bonus = randomBalanceBonus()
+        setPlayerBalance((prev) => prev + bonus)
+      }
+
       if (finalBannerTimeoutRef.current) {
         window.clearTimeout(finalBannerTimeoutRef.current)
       }
@@ -309,7 +320,7 @@ export default function SectionGame({
         setFinalBannerVisible(true)
       }, 500)
     },
-    [finalWinner],
+    [finalWinner, setPlayerBalance],
   )
 
   useEffect(() => {

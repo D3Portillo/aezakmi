@@ -7,6 +7,7 @@ import { atomWithStorage } from "jotai/utils"
 import { joinMatchmaking, type MatchmakingResult } from "@/actions/matchmaking"
 import AddressBlock from "@/components/AddressBlock"
 import { cn } from "@/lib/utils"
+import { playerBalanceAtom } from "@/lib/state"
 
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 import { GiUpgrade } from "react-icons/gi"
@@ -81,6 +82,7 @@ export default function SectionHome({
   const [walletMenuOpen, setWalletMenuOpen] = useState(false)
   const [isBattleModalOpen, setBattleModalOpen] = useState(false)
   const [showTutorial, setShowTutorial] = useAtom(showTutorialAtom)
+  const [playerBalance] = useAtom(playerBalanceAtom)
   const [isJoining, startMatchmakingTransition] = useTransition()
   const {
     logout,
@@ -134,7 +136,7 @@ export default function SectionHome({
             TOP RANK #4
           </div>
           <div className="font-bold text-sm text-cza-green">
-            2,500 Points (CZA)
+            {playerBalance.toLocaleString()} Points (CZA)
           </div>
         </div>
 
@@ -347,6 +349,7 @@ export default function SectionHome({
 
       {isBattleModalOpen && showTutorial && (
         <BattleModal
+          balance={playerBalance}
           onClose={() => setBattleModalOpen(false)}
           onContinue={(suppress) =>
             startMatchmaking({ suppressTutorial: suppress })
@@ -411,10 +414,12 @@ function Card({
 function BattleModal({
   onClose,
   onContinue,
+  balance,
   disabled = false,
 }: {
   onClose: () => void
   onContinue: (suppress: boolean) => void | Promise<void>
+  balance: number
   disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
@@ -518,7 +523,9 @@ function BattleModal({
 
           <div className="px-6 mt-2 flex items-center justify-between text-sm font-semibold text-black/70">
             <span>Balance</span>
-            <span className="text-base font-bold text-black">3 CZA</span>
+            <span className="text-base font-bold text-black">
+              {balance.toLocaleString()} CZA
+            </span>
           </div>
 
           <div className="px-6 pb-6 pt-4">
