@@ -1,14 +1,17 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useAtom } from "jotai"
+import { atomWithStorage } from "jotai/utils"
 
 import AddressBlock from "@/components/AddressBlock"
 import { cn } from "@/lib/utils"
 
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 import { GiUpgrade } from "react-icons/gi"
-import { FiCopy } from "react-icons/fi"
+import { FiChevronDown, FiCopy } from "react-icons/fi"
 import { MdArrowForward } from "react-icons/md"
+import { IoCheckmarkSharp, IoCloseSharp } from "react-icons/io5"
 
 import { useAuth } from "@/lib/wallet"
 
@@ -18,6 +21,8 @@ type DeckCard = {
   image: string
   level: number
 }
+
+const showTutorialAtom = atomWithStorage("cza.showBattleTutorial", true)
 
 const MOCK_DECK: DeckCard[] = [
   {
@@ -71,6 +76,8 @@ export default function SectionHome({
 }) {
   const [previewCard, setPreviewCard] = useState<DeckCard | null>(null)
   const [walletMenuOpen, setWalletMenuOpen] = useState(false)
+  const [isBattleModalOpen, setBattleModalOpen] = useState(false)
+  const [showTutorial, setShowTutorial] = useAtom(showTutorialAtom)
   const {
     logout,
     username,
@@ -79,6 +86,12 @@ export default function SectionHome({
     login,
     isConnected,
   } = useAuth()
+
+  useEffect(() => {
+    if (!showTutorial) {
+      setBattleModalOpen(false)
+    }
+  }, [showTutorial, setBattleModalOpen])
 
   return (
     <main className="w-full relative z-1 max-w-3xl sm:pt-5 pb-44 gap-6 mx-auto flex flex-col">
@@ -205,7 +218,13 @@ export default function SectionHome({
           </div>
 
           <button
-            onClick={onPlayGame}
+            onClick={() => {
+              if (showTutorial) {
+                setBattleModalOpen(true)
+              } else {
+                onPlayGame()
+              }
+            }}
             className="w-full active:scale-98 flex items-center justify-center gap-4 mt-6 rounded-xl bg-cza-red text-white font-bold py-3"
           >
             <span>PLAY GAME</span>
@@ -289,6 +308,19 @@ export default function SectionHome({
           onClose={() => setPreviewCard(null)}
         />
       )}
+
+      {isBattleModalOpen && showTutorial && (
+        <BattleModal
+          onClose={() => setBattleModalOpen(false)}
+          onContinue={(suppress) => {
+            if (suppress) {
+              setShowTutorial(false)
+            }
+            setBattleModalOpen(false)
+            onPlayGame()
+          }}
+        />
+      )}
     </main>
   )
 }
@@ -340,6 +372,132 @@ function Card({
         <span>LVL {level || "1"}</span>
       </div>
     </article>
+  )
+}
+
+function BattleModal({
+  onClose,
+  onContinue,
+}: {
+  onClose: () => void
+  onContinue: (suppress: boolean) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [howToPlayOpen, setHowToPlayOpen] = useState(false)
+  const [dontShowAgain, setDontShowAgain] = useState(false)
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setOpen(true))
+    return () => window.cancelAnimationFrame(frame)
+  }, [])
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/70"
+        onClick={onClose}
+        aria-label="Close battle modal"
+      />
+      <div
+        className={cn(
+          "relative z-10 w-full max-w-lg transition-all duration-300",
+          open ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6",
+        )}
+      >
+        <div className="rounded-3xl border border-black/5 bg-white text-black shadow-2xl">
+          <div className="flex justify-between items-center gap-3 px-6 pt-7">
+            <h3 className="text-2xl font-semibold tracking-tight">
+              Ready for the arena?
+            </h3>
+
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close battle modal"
+              className="ml-auto text-black/50 hover:text-black rounded-full border border-black/10 size-8 grid place-items-center"
+            >
+              <IoCloseSharp />
+            </button>
+          </div>
+          <p className="px-6 mt-4 text-sm leading-relaxed text-black/70">
+            Enter the arena and face another player. Entry costs 3 points — win
+            and earn 6 CZA Points.
+          </p>
+
+          <div className="px-6 mt-6">
+            <div className="rounded-2xl border border-black/10 bg-black/5">
+              <button
+                type="button"
+                onClick={() => setHowToPlayOpen((prev) => !prev)}
+                className="w-full flex items-center justify-between px-5 py-4 text-left"
+                aria-expanded={howToPlayOpen}
+              >
+                <span className="text-sm font-semibold tracking-wide text-black/80">
+                  How to play
+                </span>
+                <FiChevronDown
+                  className={cn(
+                    "text-lg transition-transform",
+                    howToPlayOpen ? "rotate-180" : "rotate-0",
+                  )}
+                  aria-hidden
+                />
+              </button>
+              {howToPlayOpen && (
+                <div className="px-5 pb-5 text-sm leading-relaxed text-black/70">
+                  <p>
+                    Choose your champion wisely: Cowboys beat Zombies, Zombies
+                    beat Aliens, Aliens beat Cowboys.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <label className="px-6 cursor-pointer mt-6 flex items-center justify-between gap-3 text-sm font-semibold text-black/70">
+            <span>Don't show again</span>
+            <span className="relative inline-flex items-center">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={dontShowAgain}
+                onChange={(event) => setDontShowAgain(event.target.checked)}
+              />
+              <span
+                aria-hidden
+                className={cn(
+                  "size-6 rounded-md border border-black/20 flex items-center justify-center transition-colors",
+                  dontShowAgain ? "bg-black text-white" : "bg-transparent",
+                )}
+              >
+                <IoCheckmarkSharp
+                  className={cn(
+                    "text-base transition-opacity",
+                    dontShowAgain ? "opacity-100" : "opacity-0",
+                  )}
+                />
+              </span>
+            </span>
+          </label>
+
+          <div className="px-6 mt-2 flex items-center justify-between text-sm font-semibold text-black/70">
+            <span>Balance</span>
+            <span className="text-base font-bold text-black">3 CZA</span>
+          </div>
+
+          <div className="px-6 pb-6 pt-4">
+            <button
+              type="button"
+              onClick={() => onContinue(dontShowAgain)}
+              className="w-full rounded-2xl bg-black text-white py-4 text-sm font-semibold shadow-lg shadow-black/20 active:scale-98"
+            >
+              CONTINUE (3CZA)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
 
