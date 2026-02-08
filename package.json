@@ -12,6 +12,8 @@
     "@erc7824/nitrolite": "^0.5.3",
     "@privy-io/react-auth": "^3.13.1",
     "@radix-ui/react-dialog": "^1.1.15",
+    "@upstash/realtime": "^1.0.2",
+    "@upstash/redis": "^1.36.2",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "eruda": "^3.4.3",
@@ -27,7 +29,8 @@
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "^1.1.2",
-    "viem": "^2.38.6"
+    "viem": "^2.38.6",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

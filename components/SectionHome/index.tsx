@@ -1,9 +1,10 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useAtom } from "jotai"
 import { atomWithStorage } from "jotai/utils"
 
+import { joinMatchmaking, type MatchmakingResult } from "@/actions/matchmaking"
 import AddressBlock from "@/components/AddressBlock"
 import { cn } from "@/lib/utils"
 
@@ -14,7 +15,6 @@ import { MdArrowForward } from "react-icons/md"
 import { IoCheckmarkSharp, IoCloseSharp } from "react-icons/io5"
 
 import { useAuth } from "@/lib/wallet"
-import { useYellowNetwork } from "@/lib/yellow"
 
 type DeckCard = {
   id: string
@@ -72,13 +72,16 @@ const MOCK_ALIENS = Array.from({ length: 3 }).map((_, i) => ({
 
 export default function SectionHome({
   onPlayGame,
+  onMatchReady,
 }: {
   onPlayGame: () => void
+  onMatchReady?: (result: MatchmakingResult) => void
 }) {
   const [previewCard, setPreviewCard] = useState<DeckCard | null>(null)
   const [walletMenuOpen, setWalletMenuOpen] = useState(false)
   const [isBattleModalOpen, setBattleModalOpen] = useState(false)
   const [showTutorial, setShowTutorial] = useAtom(showTutorialAtom)
+  const [isJoining, startMatchmakingTransition] = useTransition()
   const {
     logout,
     username,
@@ -93,6 +96,35 @@ export default function SectionHome({
       setBattleModalOpen(false)
     }
   }, [showTutorial, setBattleModalOpen])
+
+  const startMatchmaking = (options?: { suppressTutorial?: boolean }) => {
+    if (!evmAddress) {
+      login()
+      return
+    }
+
+    if (options?.suppressTutorial) {
+      setShowTutorial(false)
+    }
+
+    setBattleModalOpen(false)
+    onPlayGame()
+
+    startMatchmakingTransition(async () => {
+      try {
+        const result = await joinMatchmaking({
+          playerId: evmAddress,
+          username,
+        })
+
+        if (result.status === "matched") {
+          onMatchReady?.(result)
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    })
+  }
 
   return (
     <main className="w-full relative z-1 max-w-3xl sm:pt-5 pb-44 gap-6 mx-auto flex flex-col">
@@ -220,13 +252,16 @@ export default function SectionHome({
 
           <button
             onClick={() => {
+              if (isJoining) return
+              if (isConnected) return login()
               if (showTutorial) {
                 setBattleModalOpen(true)
               } else {
-                onPlayGame()
+                startMatchmaking()
               }
             }}
-            className="w-full active:scale-98 flex items-center justify-center gap-4 mt-6 rounded-xl bg-cza-red text-white font-bold py-3"
+            className="w-full active:scale-98 flex items-center justify-center gap-4 mt-6 rounded-xl bg-cza-red text-white font-bold py-3 disabled:opacity-60 disabled:cursor-not-allowed"
+            disabled={isJoining}
           >
             <span>PLAY GAME</span>
             <MdArrowForward className="text-xl scale-120" />
@@ -313,13 +348,10 @@ export default function SectionHome({
       {isBattleModalOpen && showTutorial && (
         <BattleModal
           onClose={() => setBattleModalOpen(false)}
-          onContinue={(suppress) => {
-            if (suppress) {
-              setShowTutorial(false)
-            }
-            setBattleModalOpen(false)
-            onPlayGame()
-          }}
+          onContinue={(suppress) =>
+            startMatchmaking({ suppressTutorial: suppress })
+          }
+          disabled={isJoining}
         />
       )}
     </main>
@@ -379,9 +411,11 @@ function Card({
 function BattleModal({
   onClose,
   onContinue,
+  disabled = false,
 }: {
   onClose: () => void
-  onContinue: (suppress: boolean) => void
+  onContinue: (suppress: boolean) => void | Promise<void>
+  disabled?: boolean
 }) {
   const [open, setOpen] = useState(false)
   const [howToPlayOpen, setHowToPlayOpen] = useState(false)
@@ -491,7 +525,9 @@ function BattleModal({
             <button
               type="button"
               onClick={() => onContinue(dontShowAgain)}
-              className="w-full rounded-2xl bg-black text-white py-4 text-sm font-semibold shadow-lg shadow-black/20 active:scale-98"
+              disabled={disabled}
+              aria-busy={disabled}
+              className="w-full rounded-2xl bg-black text-white py-4 text-sm font-semibold shadow-lg shadow-black/20 active:scale-98 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               CONTINUE (3CZA)
             </button>

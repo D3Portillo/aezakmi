@@ -1,11 +1,15 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import { generateUUID } from "@/lib/utils"
 
 import { IconSheriffStar } from "@/components/icons"
 import SectionGame from "@/components/SectionGame"
 import SectionHome from "@/components/SectionHome"
+import { useRealtime } from "@/lib/realtime-client"
+import { useAuth } from "@/lib/wallet"
+import type { MatchmakingResult } from "@/actions/matchmaking"
+import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 const PREP_STEPS = ["IN", "3", "2", "1", "GO!"]
 
@@ -60,40 +64,91 @@ function PrepareScreen({ onFinish }: { onFinish: () => void }) {
   )
 }
 
+function SearchingScreen() {
+  return (
+    <main className="relative bg-black/40 flex min-h-screen items-center justify-center">
+      <div className="absolute bg-radial from-black/15 to-black/30 inset-0" />
+      <div className="relative z-10 animate-in fade-in flex flex-col items-center gap-5 text-white">
+        <figure className="size-10 animate-[spin_2500ms_infinite_linear]">
+          <IconSheriffStar />
+        </figure>
+        <div className="text-sm">Searching games...</div>
+      </div>
+    </main>
+  )
+}
+
 export default function Home() {
   const [isGameStarted, setIsGameStarted] = useState(false)
   const [isSearching, setIsSearching] = useState(false)
   const [showPrepare, setShowPrepare] = useState(false)
+  const [activeMatch, setActiveMatch] = useState<{
+    roomId: string
+    players: MatchPlayer[]
+  } | null>(null)
+  const { evmAddress } = useAuth()
 
-  useEffect(() => {
-    if (!isSearching) return
-    const timer = window.setTimeout(() => {
+  useRealtime({
+    events: ["matchmaking.matchFound"],
+    enabled: isSearching,
+    onData({ data }) {
+      if (!evmAddress) {
+        return
+      }
+
+      const normalized = evmAddress.toLowerCase()
+      const participates = data.players.some(
+        (player) => player.id.toLowerCase() === normalized,
+      )
+
+      if (!participates) {
+        return
+      }
+
+      setActiveMatch({ roomId: data.roomId, players: data.players })
       setIsSearching(false)
       setShowPrepare(true)
-    }, 3000)
+    },
+  })
 
-    return () => window.clearTimeout(timer)
-  }, [isSearching])
+  const handleMatchReady = (result: MatchmakingResult) => {
+    if (result.status !== "matched") {
+      return
+    }
 
-  if (isGameStarted) return <SectionGame />
+    setActiveMatch({ roomId: result.roomId, players: result.players })
+    setIsSearching(false)
+    setShowPrepare(true)
+  }
+
+  if (isGameStarted && activeMatch) {
+    return (
+      <SectionGame match={activeMatch} currentPlayerId={evmAddress} />
+    )
+  }
+
+  if (isGameStarted) {
+    return (
+      <main className="min-h-screen flex items-center justify-center text-white">
+        <div className="text-sm text-white/60">
+          Preparing match details...
+        </div>
+      </main>
+    )
+  }
 
   if (showPrepare) {
     return <PrepareScreen onFinish={() => setIsGameStarted(true)} />
   }
 
   if (isSearching) {
-    return (
-      <main className="relative bg-black/40 flex min-h-screen items-center justify-center">
-        <div className="absolute bg-radial from-black/15 to-black/30 inset-0" />
-        <div className="relative z-10 animate-in fade-in flex flex-col items-center gap-5 text-white">
-          <figure className="size-10 animate-[spin_2500ms_infinite_linear]">
-            <IconSheriffStar />
-          </figure>
-          <div className="text-sm">Searching games...</div>
-        </div>
-      </main>
-    )
+    return <SearchingScreen />
   }
 
-  return <SectionHome onPlayGame={() => setIsSearching(true)} />
+  return (
+    <SectionHome
+      onPlayGame={() => setIsSearching(true)}
+      onMatchReady={handleMatchReady}
+    />
+  )
 }

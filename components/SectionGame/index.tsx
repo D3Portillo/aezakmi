@@ -1,5 +1,7 @@
 "use client"
 
+import type { MatchPlayer } from "@/lib/types/matchmaking"
+
 import { useCallback, useEffect, useRef, useState } from "react"
 
 import Spinner from "@/components/Spinner"
@@ -49,8 +51,45 @@ const generateRewards = (winner: "player" | "rival") => {
   return { tokens, usd }
 }
 
-export default function SectionGame() {
-  const { username } = useAuth()
+type SectionGameProps = {
+  match?: { roomId: string; players: MatchPlayer[] } | null
+  currentPlayerId?: string | null
+}
+
+const shortenAddress = (value?: string | null) =>
+  value ? `${value.slice(0, 6)}...${value.slice(-4)}` : null
+
+export default function SectionGame({
+  match,
+  currentPlayerId,
+}: SectionGameProps) {
+  const { username, formattedEvmAddress, evmAddress } = useAuth()
+  const normalizedCurrentId =
+    currentPlayerId?.toLowerCase() ?? evmAddress?.toLowerCase() ?? null
+  const players = match?.players ?? []
+  const currentPlayer = normalizedCurrentId
+    ? players.find((player) => player.id.toLowerCase() === normalizedCurrentId)
+    : null
+  const opponentPlayer = normalizedCurrentId
+    ? players.find((player) => player.id.toLowerCase() !== normalizedCurrentId)
+    : (players[1] ?? players[0] ?? null)
+  const playerDisplayName =
+    currentPlayer?.username ??
+    username ??
+    formattedEvmAddress ??
+    shortenAddress(currentPlayer?.id ?? currentPlayerId ?? evmAddress) ??
+    "You"
+  const playerAvatarSeed =
+    currentPlayer?.username ??
+    username ??
+    currentPlayer?.id ??
+    currentPlayerId ??
+    evmAddress ??
+    "you"
+  const opponentDisplayName =
+    opponentPlayer?.username ?? shortenAddress(opponentPlayer?.id) ?? "Opponent"
+  const opponentAvatarSeed =
+    opponentPlayer?.username ?? opponentPlayer?.id ?? "opponent"
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
   )
@@ -413,7 +452,7 @@ export default function SectionGame() {
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
             <div id="current-player" className="flex items-center gap-3">
               <div className="size-10 rounded-xl overflow-hidden">
-                <AddressBlock name={username} />
+                <AddressBlock name={playerAvatarSeed} />
               </div>
 
               <div>
@@ -421,7 +460,7 @@ export default function SectionGame() {
                   <span>YOU</span>
                 </div>
 
-                <div className="font-semibold text-sm">{username}</div>
+                <div className="font-semibold text-sm">{playerDisplayName}</div>
               </div>
             </div>
 
@@ -441,14 +480,16 @@ export default function SectionGame() {
                   </span>
                 </div>
 
-                <div className="font-semibold text-sm">Arthur</div>
+                <div className="font-semibold text-sm">
+                  {opponentDisplayName}
+                </div>
               </div>
 
               <div
                 id="rival-face"
                 className="size-10 rounded-xl overflow-hidden"
               >
-                <AddressBlock name="rrd-47" />
+                <AddressBlock name={opponentAvatarSeed} />
               </div>
             </div>
           </div>

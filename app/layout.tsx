@@ -47,12 +47,12 @@ export default function RootLayout({
           }}
           position="top-center"
         />
-        <AlertProvider />
-        <ErudaProvider>
-          <Providers>
+        <Providers>
+          <AlertProvider />
+          <ErudaProvider>
             <MainLayout>{children}</MainLayout>
-          </Providers>
-        </ErudaProvider>
+          </ErudaProvider>
+        </Providers>
       </body>
     </html>
   )
