@@ -9,6 +9,21 @@ const PLAYER_KEY_PREFIX = "cza:matchmaking:player:"
 const TTL_SECONDS = 60 * 5
 const TTL_MS = TTL_SECONDS * 1000
 
+const MOCK_OPPONENT_PROFILES = [
+  {
+    id: "0x4b3d9d1f0fcb53cd86aed9ddf3aabc7f7be47c39",
+    username: "Neon Marshal",
+  },
+  {
+    id: "0x9e12cb128c0a732b0feb1a7f0a78eabc1f8beef0",
+    username: "Shadow Raptor",
+  },
+  {
+    id: "0x0f6b2f20317c2f782fe23f5f93e15b04f28a27b3",
+    username: "Plasma Nomad",
+  },
+] as const
+
 const createRoomId = () => {
   const api = globalThis.crypto
   return api?.randomUUID
@@ -20,7 +35,12 @@ type QueuePlayer = MatchPlayer
 
 export type MatchmakingResult =
   | { status: "waiting" }
-  | { status: "matched"; roomId: string; players: MatchPlayer[] }
+  | {
+      status: "matched"
+      roomId: string
+      players: MatchPlayer[]
+      isMock?: boolean
+    }
 
 const playerMetaKey = (playerId: string) => `${PLAYER_KEY_PREFIX}${playerId}`
 
@@ -138,6 +158,31 @@ async function tryMatch(
   return opponent
 }
 
+const pickMockOpponent = (excludePlayerId: string): QueuePlayer => {
+  const normalizedExclude = excludePlayerId.toLowerCase()
+  const candidates = MOCK_OPPONENT_PROFILES.filter(
+    (profile) => profile.id.toLowerCase() !== normalizedExclude,
+  )
+  const fallback = MOCK_OPPONENT_PROFILES[0]
+  const selection =
+    candidates[Math.floor(Math.random() * candidates.length)] ?? fallback
+
+  return {
+    id: selection.id,
+    username: selection.username,
+    joinedAt: Date.now(),
+  }
+}
+
+const createMockMatch = (currentPlayer: QueuePlayer) => {
+  const opponent = pickMockOpponent(currentPlayer.id)
+  const roomId = `mock-${createRoomId()}`
+  return {
+    roomId,
+    players: [opponent, currentPlayer],
+  }
+}
+
 export async function joinMatchmaking(options: {
   playerId: string
   username?: string | null
@@ -160,6 +205,17 @@ export async function joinMatchmaking(options: {
 
   const opponent = await tryMatch(currentPlayer)
   if (!opponent) {
+    const queueSize = await redis.zcard(QUEUE_KEY)
+    if (queueSize === 1) {
+      await removePlayersFromQueue([currentPlayer.id])
+      const mockMatch = createMockMatch(currentPlayer)
+      return {
+        status: "matched",
+        roomId: mockMatch.roomId,
+        players: mockMatch.players,
+        isMock: true,
+      }
+    }
     return { status: "waiting" }
   }
 

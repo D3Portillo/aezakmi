@@ -62,7 +62,7 @@ const generateRewards = (winner: "player" | "rival") => {
 }
 
 type SectionGameProps = {
-  match?: { roomId: string; players: MatchPlayer[] } | null
+  match?: { roomId: string; players: MatchPlayer[]; isMock?: boolean } | null
   currentPlayerId?: string | null
 }
 
@@ -82,6 +82,7 @@ export default function SectionGame({
   }, [createSession, sendEvent])
 
   const { username, formattedEvmAddress, evmAddress } = useAuth()
+  const isMockMatch = Boolean(match?.isMock)
   const normalizedCurrentId =
     currentPlayerId?.toLowerCase() ?? evmAddress?.toLowerCase() ?? null
   const players = match?.players ?? []
@@ -98,12 +99,14 @@ export default function SectionGame({
     opponentPlayer?.username ??
     (opponentPlayer?.id ? beautifyAddress(opponentPlayer.id) : "Opponent")
 
-  const currentRoomId = match?.roomId ?? null
+  const currentRoomId = isMockMatch ? null : match?.roomId ?? null
   const playerSessionAddress =
     currentPlayer?.id ?? currentPlayerId ?? evmAddress ?? null
-  const opponentAddress = opponentPlayer?.id
-    ? (opponentPlayer.id as Address)
-    : null
+  const opponentAddress = isMockMatch
+    ? null
+    : opponentPlayer?.id
+      ? (opponentPlayer.id as Address)
+      : null
 
   const [, setPlayerBalance] = useAtom(playerBalanceAtom)
 
@@ -190,6 +193,10 @@ export default function SectionGame({
       return
     }
 
+    if (isMockMatch) {
+      return
+    }
+
     if (sessionRoomId === currentRoomId || sessionPending) {
       return
     }
@@ -225,6 +232,7 @@ export default function SectionGame({
     playerSessionAddress,
     sessionPending,
     sessionRoomId,
+    isMockMatch,
   ])
 
   const handleRetreatConfirm = () => {
@@ -259,6 +267,7 @@ export default function SectionGame({
     setShowOutcomeModal(true)
 
     if (
+      isMockMatch ||
       !isSessionActive ||
       !opponentAddress ||
       !playerSessionAddress ||
@@ -379,7 +388,8 @@ export default function SectionGame({
       !currentRoomId ||
       !opponentAddress ||
       !playerSessionAddress ||
-      !isSessionActive
+      !isSessionActive ||
+      isMockMatch
     ) {
       return
     }
@@ -401,9 +411,14 @@ export default function SectionGame({
     opponentAddress,
     playerSessionAddress,
     isSessionActive,
+    isMockMatch,
   ])
 
   useEffect(() => {
+    if (isMockMatch) {
+      return
+    }
+
     if (
       !latestEvent ||
       latestEvent.method !== GAME_NUKE_EVENT ||
@@ -466,6 +481,7 @@ export default function SectionGame({
     normalizedCurrentId,
     opponentNukeUsed,
     playerNukeUsed,
+    isMockMatch,
   ])
 
   useEffect(() => {

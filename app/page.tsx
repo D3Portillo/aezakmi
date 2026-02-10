@@ -85,6 +85,7 @@ export default function Home() {
   const [activeMatch, setActiveMatch] = useState<{
     roomId: string
     players: MatchPlayer[]
+    isMock?: boolean
   } | null>(null)
   const { evmAddress } = useAuth()
 
@@ -105,7 +106,7 @@ export default function Home() {
         return
       }
 
-      setActiveMatch({ roomId: data.roomId, players: data.players })
+      setActiveMatch({ roomId: data.roomId, players: data.players, isMock: false })
       setIsSearching(false)
       setShowPrepare(true)
     },
@@ -116,7 +117,11 @@ export default function Home() {
       return
     }
 
-    setActiveMatch({ roomId: result.roomId, players: result.players })
+    setActiveMatch({
+      roomId: result.roomId,
+      players: result.players,
+      isMock: result.isMock ?? false,
+    })
     setIsSearching(false)
     setShowPrepare(true)
   }
