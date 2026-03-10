@@ -163,12 +163,35 @@ export function useGameLogic(
       setShowOutcomeModal(false)
       setBattleOutcome(null)
       setFinalBannerVisible(false)
-      if (winner === "player" && evmAddress) {
-        updatePlayerPoints(evmAddress, randomBalanceBonus())
-          .then(() => mutate(`points.${evmAddress}`))
-          .catch((error) => {
-            console.error("[useGameLogic] updatePlayerPoints failed", error)
-          })
+      if (!isMockMatch) {
+        const bonus = randomBalanceBonus()
+        if (winner === "player") {
+          if (evmAddress) {
+            updatePlayerPoints(evmAddress, bonus)
+              .then(() => mutate(`points.${evmAddress}`))
+              .catch((error) => {
+                console.error("[useGameLogic] updatePlayerPoints (win) failed", error)
+              })
+          }
+          if (opponentAddress) {
+            updatePlayerPoints(opponentAddress, -bonus).catch((error) => {
+              console.error("[useGameLogic] updatePlayerPoints (rival loss) failed", error)
+            })
+          }
+        } else {
+          if (opponentAddress) {
+            updatePlayerPoints(opponentAddress, bonus).catch((error) => {
+              console.error("[useGameLogic] updatePlayerPoints (rival win) failed", error)
+            })
+          }
+          if (evmAddress) {
+            updatePlayerPoints(evmAddress, -bonus)
+              .then(() => mutate(`points.${evmAddress}`))
+              .catch((error) => {
+                console.error("[useGameLogic] updatePlayerPoints (loss) failed", error)
+              })
+          }
+        }
       }
       if (finalBannerTimeoutRef.current) {
         window.clearTimeout(finalBannerTimeoutRef.current)
@@ -178,7 +201,7 @@ export function useGameLogic(
         500,
       )
     },
-    [finalWinner, evmAddress],
+    [finalWinner, evmAddress, isMockMatch, opponentAddress],
   )
 
   useEffect(() => {

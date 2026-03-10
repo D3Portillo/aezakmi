@@ -1,9 +1,27 @@
 "use server"
 
+import { parseUnits, formatUnits } from "viem"
 import { redis } from "@/lib/redis"
-import { DEFAULT_PLAYER_POINTS } from "@/lib/constants"
+import {
+  DEFAULT_PLAYER_POINTS,
+  MIN_PLAYER_POINTS,
+  POINTS_DECIMALS,
+} from "@/lib/constants"
 
 const POINTS_KEY_PREFIX = "cza:points:"
+
+// Convert a display-unit number to its 6-decimal integer storage representation
+const toStorage = (display: number): bigint =>
+  parseUnits(String(display), POINTS_DECIMALS)
+
+// Convert a 6-decimal integer storage value back to a display-unit number.
+// Safe for display values up to ~9 billion (well within game point ranges).
+const fromStorage = (value: string | number): number =>
+  Number(formatUnits(BigInt(String(value)), POINTS_DECIMALS))
+
+// Pre-computed storage constants
+const DEFAULT_STORAGE = String(toStorage(DEFAULT_PLAYER_POINTS))
+const MIN_STORAGE = String(toStorage(MIN_PLAYER_POINTS))
 
 const pointsKey = (playerId: string) =>
   `${POINTS_KEY_PREFIX}${playerId.toLowerCase()}`
@@ -12,15 +30,16 @@ export async function getPlayerPoints(playerId: string): Promise<number> {
   if (!playerId) return DEFAULT_PLAYER_POINTS
   const value = await redis.get(pointsKey(playerId))
   if (value === null) return DEFAULT_PLAYER_POINTS
-  return Number(value)
+  return fromStorage(String(value))
 }
 
-// Atomically initializes (if missing), increments by delta, and clamps to >= 0
+// Atomically initializes (if missing), increments by delta, and clamps to >= min
 const UPDATE_SCRIPT = `
 local current = redis.call('GET', KEYS[1])
 local base = current == false and tonumber(ARGV[2]) or tonumber(current)
 local result = base + tonumber(ARGV[1])
-if result < 0 then result = 0 end
+local min = tonumber(ARGV[3])
+if result < min then result = min end
 redis.call('SET', KEYS[1], result)
 return result
 `
@@ -33,7 +52,7 @@ export async function updatePlayerPoints(
   const result = await redis.eval(
     UPDATE_SCRIPT,
     [pointsKey(playerId)],
-    [String(delta), String(DEFAULT_PLAYER_POINTS)],
+    [String(toStorage(delta)), DEFAULT_STORAGE, MIN_STORAGE],
   )
-  return Number(result)
+  return fromStorage(String(result))
 }
