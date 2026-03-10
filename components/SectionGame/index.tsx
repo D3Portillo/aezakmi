@@ -1,1317 +1,144 @@
 "use client"
 
-import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { useAtom } from "jotai"
-import { useRouter } from "next/navigation"
-
-import Spinner from "@/components/Spinner"
-import AddressBlock from "@/components/AddressBlock"
-import { useAuth } from "@/lib/wallet"
-import { beautifyAddress, cn } from "@/lib/utils"
-import { playerBalanceAtom } from "@/lib/state"
-
-import { FaHeart } from "react-icons/fa6"
-import { useYellowNetwork } from "@/lib/yellow"
-import NukeAction from "./Nuke"
-import RetreatAction from "./Retreat"
-
-type Card = "Cowboy" | "Zombie" | "Alien"
-
-const PLAYER_HAND: Card[] = ["Cowboy", "Zombie", "Alien"]
-const CARD_ART: Record<Card, string> = {
-  Cowboy: "/cards/cowboy.png",
-  Zombie: "/cards/zombie.png",
-  Alien: "/cards/alien.png",
-}
-
-const CARD_BACK_ART = "/cards/back.png"
-
-const CARD_BEATS: Record<Card, Card> = {
-  Cowboy: "Zombie",
-  Zombie: "Alien",
-  Alien: "Cowboy",
-}
-
-const MAX_MATCHES = 3
-const GAME_CARD_EVENT = "cza.game.cardPlayed"
-const GAME_NUKE_EVENT = "cza.game.nuke"
-
-type PlayerHandCard = {
-  id: string
-  card: Card
-}
-
-let cardIdCounter = 0
-const nextCardId = () => `card-${cardIdCounter++}`
-const createInitialHand = (): PlayerHandCard[] =>
-  PLAYER_HAND.map((card) => ({
-    id: nextCardId(),
-    card,
-  }))
-
-const randomBalanceBonus = () => 80 + Math.floor(Math.random() * 220)
-
-const generateRewards = (winner: "player" | "rival") => {
-  const baseTokens = winner === "player" ? 320 : 180
-  const tokens = baseTokens + Math.floor(Math.random() * 80)
-  const usd = Number((tokens * 0.12).toFixed(2))
-  return { tokens, usd }
-}
+import { useGameLogic } from "./useGameLogic"
+import GameHeader from "./GameHeader"
+import BattleArena from "./BattleArena"
+import GamePad from "./GamePad"
+import CardRevealModal from "./CardRevealModal"
+import CardFlyAnimation from "./CardFlyAnimation"
+import OutcomeModal from "./OutcomeModal"
+import FinalBanner from "./FinalBanner"
+import GameStyles from "./GameStyles"
 
 type SectionGameProps = {
   match?: { roomId: string; players: MatchPlayer[]; isMock?: boolean } | null
   currentPlayerId?: string | null
 }
 
+
 export default function SectionGame({
   match,
   currentPlayerId,
 }: SectionGameProps) {
-  const { createSession, isSessionActive, sendEvent, latestEvent } =
-    useYellowNetwork()
-  const router = useRouter()
-  const createSessionRef = useRef(createSession)
-  const sendEventRef = useRef(sendEvent)
-
-  useEffect(() => {
-    createSessionRef.current = createSession
-    sendEventRef.current = sendEvent
-  }, [createSession, sendEvent])
-
-  const { username, formattedEvmAddress, evmAddress } = useAuth()
-  const isMockMatch = Boolean(match?.isMock)
-  const normalizedCurrentId =
-    currentPlayerId?.toLowerCase() ?? evmAddress?.toLowerCase() ?? null
-  const players = match?.players ?? []
-  const currentPlayer = normalizedCurrentId
-    ? players.find((player) => player.id.toLowerCase() === normalizedCurrentId)
-    : null
-  const opponentPlayer = normalizedCurrentId
-    ? players.find((player) => player.id.toLowerCase() !== normalizedCurrentId)
-    : (players[1] ?? players[0] ?? null)
-  const playerDisplayName =
-    currentPlayer?.username ?? username ?? formattedEvmAddress ?? "You"
-
-  const opponentDisplayName =
-    opponentPlayer?.username ??
-    (opponentPlayer?.id ? beautifyAddress(opponentPlayer.id) : "Opponent")
-
-  const currentRoomId = isMockMatch ? null : match?.roomId ?? null
-  const playerSessionAddress =
-    currentPlayer?.id ?? currentPlayerId ?? evmAddress ?? null
-  const opponentAddress = isMockMatch
-    ? null
-    : opponentPlayer?.id
-      ? (opponentPlayer.id as Address)
-      : null
-
-  const [, setPlayerBalance] = useAtom(playerBalanceAtom)
-
-  const [sessionRoomId, setSessionRoomId] = useState<string | null>(null)
-  const [sessionPending, setSessionPending] = useState(false)
-  const [playerNukeUsed, setPlayerNukeUsed] = useState(false)
-  const [opponentNukeUsed, setOpponentNukeUsed] = useState(false)
-  const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
-    createInitialHand(),
-  )
-  const [selectedCard, setSelectedCard] = useState<Card | null>(null)
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
-  const [activeHandIndex, setActiveHandIndex] = useState<number | null>(null)
-  const [fanOpened, setFanOpened] = useState(false)
-  const [revealOpen, setRevealOpen] = useState(false)
-  const [revealKey, setRevealKey] = useState(0)
-  const [placedCard, setPlacedCard] = useState<Card | null>(null)
-  const [rivalPlacedCard, setRivalPlacedCard] = useState<Card | null>(null)
-  const [battleReady, setBattleReady] = useState(false)
-  const [battlePhase, setBattlePhase] = useState<"idle" | "shake" | "flip">(
-    "idle",
-  )
-  const [battleOutcome, setBattleOutcome] = useState<
-    "player" | "rival" | "draw" | null
-  >(null)
-  const [showOutcomeModal, setShowOutcomeModal] = useState(false)
-  const [playerHearts, setPlayerHearts] = useState(2)
-  const [rivalHearts, setRivalHearts] = useState(2)
-  const [currentMatch, setCurrentMatch] = useState(1)
-  const [finalWinner, setFinalWinner] = useState<"player" | "rival" | null>(
-    null,
-  )
-  const [finalRewards, setFinalRewards] = useState<{
-    tokens: number
-    usd: number
-  } | null>(null)
-  const [finalBannerVisible, setFinalBannerVisible] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(120)
-  const [cardsFaceUp, setCardsFaceUp] = useState(false)
-  const [cardArtFailed, setCardArtFailed] = useState<Record<Card, boolean>>({
-    Cowboy: false,
-    Zombie: false,
-    Alien: false,
-  })
-
-  const [movingPlayerCard, setMovingPlayerCard] = useState<{
-    card: Card
-    from: DOMRect
-    to: DOMRect
-  } | null>(null)
-
-  const [movingRivalCard, setMovingRivalCard] = useState<{
-    card: Card
-    from: DOMRect
-    to: DOMRect
-    width: number
-    height: number
-    overshoot: { x: number; y: number }
-  } | null>(null)
-
-  const [movePlayerActive, setMovePlayerActive] = useState(false)
-  const [moveRivalActive, setMoveRivalActive] = useState(false)
-
-  const revealCardRef = useRef<HTMLDivElement | null>(null)
-  const finalBannerTimeoutRef = useRef<number | null>(null)
-  const lastNukeEventRef = useRef<number | null>(null)
-
-  useEffect(() => {
-    return () => {
-      if (finalBannerTimeoutRef.current) {
-        window.clearTimeout(finalBannerTimeoutRef.current)
-      }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!currentRoomId) {
-      setSessionRoomId(null)
-    }
-  }, [currentRoomId])
-
-  useEffect(() => {
-    if (!currentRoomId || !playerSessionAddress || !opponentAddress) {
-      return
-    }
-
-    if (isMockMatch) {
-      return
-    }
-
-    if (sessionRoomId === currentRoomId || sessionPending) {
-      return
-    }
-
-    const creator = createSessionRef.current
-    if (!creator) {
-      return
-    }
-
-    let cancelled = false
-    setSessionPending(true)
-
-    creator(opponentAddress)
-      .then(() => {
-        if (cancelled) return
-        setSessionRoomId(currentRoomId)
-      })
-      .catch((error) => {
-        if (cancelled) return
-        console.error("[SectionGame] createSession failed", error)
-      })
-      .finally(() => {
-        if (cancelled) return
-        setSessionPending(false)
-      })
-
-    return () => {
-      cancelled = true
-    }
-  }, [
-    currentRoomId,
-    opponentAddress,
-    playerSessionAddress,
-    sessionPending,
-    sessionRoomId,
-    isMockMatch,
-  ])
-
-  const handleRetreatConfirm = () => {
-    router.push("/")
-  }
-
-  const handleNukeConfirm = () => {
-    if (playerNukeUsed) {
-      return
-    }
-
-    setBattlePhase("idle")
-    setBattleReady(false)
-    setCardsFaceUp(false)
-    setPlacedCard(null)
-    setRivalPlacedCard(null)
-    setSelectedCard(null)
-    setSelectedIndex(null)
-    setActiveHandIndex(null)
-    setMovePlayerActive(false)
-    setMoveRivalActive(false)
-
-    setPlayerNukeUsed(true)
-
-    if (opponentNukeUsed) {
-      setBattleOutcome("draw")
-    } else {
-      setBattleOutcome("player")
-      setRivalHearts((prev) => Math.max(0, prev - 1))
-    }
-
-    setShowOutcomeModal(true)
-
-    if (
-      isMockMatch ||
-      !isSessionActive ||
-      !opponentAddress ||
-      !playerSessionAddress ||
-      !currentRoomId
-    ) {
-      return
-    }
-
-    const dispatcher = sendEventRef.current
-    if (!dispatcher) return
-
-    const issuedAt = Date.now()
-    lastNukeEventRef.current = issuedAt
-
-    dispatcher(opponentAddress, GAME_NUKE_EVENT, {
-      roomId: currentRoomId,
-      playerId: playerSessionAddress,
-      issuedAt,
-    }).catch((error) => {
-      console.error("[SectionGame] sendEvent (nuke) failed", error)
-    })
-  }
-
-  const advanceToNextMatch = useCallback(() => {
-    if (finalWinner) return
-    setShowOutcomeModal(false)
-    setBattleOutcome(null)
-    setPlacedCard(null)
-    setRivalPlacedCard(null)
-    setSelectedCard(null)
-    setSelectedIndex(null)
-    setActiveHandIndex(null)
-    setBattleReady(false)
-    setBattlePhase("idle")
-    setPlayerNukeUsed(false)
-    setOpponentNukeUsed(false)
-    setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
-  }, [finalWinner])
-
-  const declareFinalWinner = useCallback(
-    (winner: "player" | "rival") => {
-      if (finalWinner) return
-      setFinalWinner(winner)
-      setFinalRewards(generateRewards(winner))
-      setShowOutcomeModal(false)
-      setBattleOutcome(null)
-      setFinalBannerVisible(false)
-
-      if (winner === "player") {
-        const bonus = randomBalanceBonus()
-        setPlayerBalance((prev) => prev + bonus)
-      }
-
-      if (finalBannerTimeoutRef.current) {
-        window.clearTimeout(finalBannerTimeoutRef.current)
-      }
-
-      finalBannerTimeoutRef.current = window.setTimeout(() => {
-        setFinalBannerVisible(true)
-      }, 500)
-    },
-    [finalWinner, setPlayerBalance],
-  )
-
-  useEffect(() => {
-    if (!selectedCard) return
-    setRevealOpen(false)
-    setRevealKey((prev) => prev + 1)
-    const timer = window.setTimeout(() => setRevealOpen(true), 40)
-    return () => window.clearTimeout(timer)
-  }, [selectedCard])
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => setFanOpened(true), 80)
-    return () => window.clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    const entries = Object.entries(CARD_ART) as [Card, string][]
-    entries.forEach(([card, src]) => {
-      const img = new window.Image()
-      img.onerror = () =>
-        setCardArtFailed((prev) =>
-          prev[card]
-            ? prev
-            : {
-                ...prev,
-                [card]: true,
-              },
-        )
-      img.src = src
-    })
-  }, [])
-
-  useEffect(() => {
-    const interval = window.setInterval(() => {
-      setTimeLeft((prev) => (prev > 0 ? prev - 1 : 0))
-    }, 1000)
-
-    return () => window.clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
-    if (!placedCard || !rivalPlacedCard) {
-      setBattleReady(false)
-      setBattleOutcome(null)
-      setShowOutcomeModal(false)
-      return
-    }
-
-    const timer = window.setTimeout(() => setBattleReady(true), 500)
-    return () => window.clearTimeout(timer)
-  }, [placedCard, rivalPlacedCard])
-
-  useEffect(() => {
-    if (
-      !placedCard ||
-      !currentRoomId ||
-      !opponentAddress ||
-      !playerSessionAddress ||
-      !isSessionActive ||
-      isMockMatch
-    ) {
-      return
-    }
-
-    const dispatcher = sendEventRef.current
-    if (!dispatcher) return
-
-    dispatcher(opponentAddress, GAME_CARD_EVENT, {
-      roomId: currentRoomId,
-      card: placedCard,
-      playerId: playerSessionAddress,
-      issuedAt: Date.now(),
-    }).catch((error) => {
-      console.error("[SectionGame] sendEvent failed", error)
-    })
-  }, [
-    placedCard,
-    currentRoomId,
-    opponentAddress,
-    playerSessionAddress,
-    isSessionActive,
-    isMockMatch,
-  ])
-
-  useEffect(() => {
-    if (isMockMatch) {
-      return
-    }
-
-    if (
-      !latestEvent ||
-      latestEvent.method !== GAME_NUKE_EVENT ||
-      !currentRoomId
-    ) {
-      return
-    }
-
-    const payload = latestEvent.params as {
-      roomId?: string
-      playerId?: string
-      issuedAt?: number
-    }
-
-    if (!payload?.roomId || payload.roomId !== currentRoomId) {
-      return
-    }
-
-    const sender = payload.playerId?.toLowerCase()
-    if (!sender || sender === normalizedCurrentId?.toLowerCase()) {
-      return
-    }
-
-    if (payload.issuedAt && lastNukeEventRef.current === payload.issuedAt) {
-      return
-    }
-
-    if (payload.issuedAt) {
-      lastNukeEventRef.current = payload.issuedAt
-    }
-
-    if (opponentNukeUsed) {
-      return
-    }
-
-    setBattlePhase("idle")
-    setBattleReady(false)
-    setCardsFaceUp(false)
-    setPlacedCard(null)
-    setRivalPlacedCard(null)
-    setSelectedCard(null)
-    setSelectedIndex(null)
-    setActiveHandIndex(null)
-    setMovePlayerActive(false)
-    setMoveRivalActive(false)
-
-    setOpponentNukeUsed(true)
-
-    if (playerNukeUsed) {
-      setBattleOutcome("draw")
-    } else {
-      setBattleOutcome("rival")
-      setPlayerHearts((prev) => Math.max(0, prev - 1))
-    }
-
-    setShowOutcomeModal(true)
-  }, [
-    latestEvent,
-    currentRoomId,
-    normalizedCurrentId,
-    opponentNukeUsed,
-    playerNukeUsed,
-    isMockMatch,
-  ])
-
-  useEffect(() => {
-    if (!battleReady) {
-      setBattlePhase("idle")
-      setBattleOutcome(null)
-      setShowOutcomeModal(false)
-      return
-    }
-
-    setBattlePhase("shake")
-    const shakeTimer = window.setTimeout(() => {
-      setBattlePhase("flip")
-    }, 600)
-
-    return () => window.clearTimeout(shakeTimer)
-  }, [battleReady])
-
-  useEffect(() => {
-    if (battlePhase !== "flip" || !placedCard || !rivalPlacedCard) {
-      setCardsFaceUp(false)
-      return
-    }
-
-    const revealTimer = window.setTimeout(() => setCardsFaceUp(true), 320)
-    return () => window.clearTimeout(revealTimer)
-  }, [battlePhase, placedCard, rivalPlacedCard])
-
-  useEffect(() => {
-    if (
-      battlePhase !== "flip" ||
-      !placedCard ||
-      !rivalPlacedCard ||
-      battleOutcome
-    ) {
-      return
-    }
-
-    const resolveTimer = window.setTimeout(() => {
-      const isFinalRound = currentMatch === MAX_MATCHES
-
-      if (placedCard === rivalPlacedCard) {
-        setBattleOutcome("draw")
-        if (isFinalRound && playerHearts !== rivalHearts) {
-          declareFinalWinner(playerHearts > rivalHearts ? "player" : "rival")
-        } else {
-          setShowOutcomeModal(true)
-        }
-        return
-      }
-
-      const playerWins = CARD_BEATS[placedCard] === rivalPlacedCard
-      const nextPlayerHearts = playerWins
-        ? playerHearts
-        : Math.max(0, playerHearts - 1)
-      const nextRivalHearts = playerWins
-        ? Math.max(0, rivalHearts - 1)
-        : rivalHearts
-
-      setBattleOutcome(playerWins ? "player" : "rival")
-      setPlayerHearts(nextPlayerHearts)
-      setRivalHearts(nextRivalHearts)
-
-      const heartsFinished = nextPlayerHearts === 0 || nextRivalHearts === 0
-
-      if (heartsFinished || isFinalRound) {
-        declareFinalWinner(
-          nextPlayerHearts > nextRivalHearts ? "player" : "rival",
-        )
-        return
-      }
-
-      setShowOutcomeModal(true)
-    }, 720)
-
-    return () => window.clearTimeout(resolveTimer)
-  }, [
+  const {
+    playerDisplayName,
+    opponentDisplayName,
+    playerHearts,
+    rivalHearts,
+    currentMatch,
+    timeLeft,
+    finalWinner,
+    finalRewards,
+    finalBannerVisible,
+    battleReady,
     battlePhase,
+    battleOutcome,
+    showOutcomeModal,
     placedCard,
     rivalPlacedCard,
-    battleOutcome,
-    playerHearts,
-    rivalHearts,
-    currentMatch,
-    declareFinalWinner,
-  ])
-
-  useEffect(() => {
-    if (finalWinner) return
-    if (playerHearts <= 0 && rivalHearts <= 0) return
-    if (playerHearts <= 0) {
-      declareFinalWinner("rival")
-    } else if (rivalHearts <= 0) {
-      declareFinalWinner("player")
-    }
-  }, [playerHearts, rivalHearts, finalWinner, declareFinalWinner])
-
-  useEffect(() => {
-    if (finalWinner) return
-    if (
-      currentMatch === MAX_MATCHES &&
-      battleOutcome === "draw" &&
-      showOutcomeModal &&
-      playerHearts !== rivalHearts
-    ) {
-      declareFinalWinner(playerHearts > rivalHearts ? "player" : "rival")
-    }
-  }, [
-    currentMatch,
-    battleOutcome,
-    playerHearts,
-    rivalHearts,
-    showOutcomeModal,
-    declareFinalWinner,
-    finalWinner,
-  ])
-
-  useEffect(() => {
-    if (!showOutcomeModal || !battleOutcome || finalWinner) return
-
-    const resetTimer = window.setTimeout(() => {
-      advanceToNextMatch()
-    }, 1200)
-
-    return () => window.clearTimeout(resetTimer)
-  }, [showOutcomeModal, battleOutcome, advanceToNextMatch, finalWinner])
-
-  const handleSelectCard = (card: Card, index: number) => {
-    setSelectedCard(null)
-    setSelectedIndex(null)
-    setActiveHandIndex(index)
-    window.requestAnimationFrame(() => {
-      setSelectedCard(card)
-      setSelectedIndex(index)
-    })
-  }
-
-  const initialRevealTransform = () => {
-    if (selectedIndex === 1) {
-      return "rotateY(0deg) rotateX(12deg) scale(0.9) translateY(22px)"
-    }
-    if (selectedIndex === 2) {
-      return "rotateY(-22deg) rotateX(12deg) scale(0.9) translateY(20px)"
-    }
-    return "rotateY(22deg) rotateX(12deg) scale(0.9) translateY(20px)"
-  }
-
-  const handleUse = () => {
-    if (!selectedCard || !revealCardRef.current) return
-    if (selectedIndex === null) return
-    const target = document.getElementById("player-card")
-    if (!target) return
-
-    const from = revealCardRef.current.getBoundingClientRect()
-    const to = target.getBoundingClientRect()
-
-    setPlayerHand((prev) => prev.filter((_, idx) => idx !== selectedIndex))
-    setMovingPlayerCard({ card: selectedCard, from, to })
-    setMovePlayerActive(false)
-    setSelectedCard(null)
-    setActiveHandIndex(null)
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setMovePlayerActive(true))
-    })
-
-    window.setTimeout(() => {
-      const rivalCard =
-        PLAYER_HAND[Math.floor(Math.random() * PLAYER_HAND.length)]
-      animateRivalPlace(rivalCard)
-    }, 2000)
-  }
-
-  const animateRivalPlace = (card: Card) => {
-    const source = document.getElementById("rival-face")
-    const target = document.getElementById("rival-card")
-    if (!target || !source) return
-
-    const from = source.getBoundingClientRect()
-    const to = target.getBoundingClientRect()
-
-    const width = to.width
-    const height = to.height
-    const startX = from.left + from.width / 2 - width / 2
-    const startY = from.top + from.height / 2 - height / 2
-    const endX = to.left + to.width / 2 - width / 2
-    const endY = to.top + to.height / 2 - height / 2
-
-    const startRect = new DOMRect(startX, startY, width, height)
-    const endRect = new DOMRect(endX, endY, width, height)
-
-    setMovingRivalCard({
-      card,
-      from: startRect,
-      to: endRect,
-      width,
-      height,
-      overshoot: { x: 6, y: 6 },
-    })
-    setMoveRivalActive(false)
-
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => setMoveRivalActive(true))
-    })
-  }
+    cardsFaceUp,
+    playerHand,
+    selectedCard,
+    selectedIndex,
+    activeHandIndex,
+    fanOpened,
+    revealOpen,
+    revealKey,
+    movingPlayerCard,
+    movingRivalCard,
+    movePlayerActive,
+    moveRivalActive,
+    cardArtFailed,
+    playerNukeUsed,
+    revealCardRef,
+    handleSelectCard,
+    handleUse,
+    handleNukeConfirm,
+    handleRetreatConfirm,
+    advanceToNextMatch,
+    handlePlayerCardLand,
+    handleRivalCardLand,
+    setSelectedCard,
+    setActiveHandIndex,
+  } = useGameLogic(match, currentPlayerId)
 
   return (
     <main className="relative bg-black/55 overflow-x-hidden flex flex-col items-center min-h-screen pb-6 gap-6">
-      <section className="w-full p-2 max-w-3xl">
-        <div className="w-full rounded-2xl border border-white/10 bg-linear-to-r from-cza-purple/10 via-cza-red/25 to-cza-purple/10 p-3 text-white shadow-lg">
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
-            <div id="current-player" className="flex items-center gap-3">
-              <div className="size-10 rounded-xl overflow-hidden">
-                <AddressBlock name={playerDisplayName} />
-              </div>
+      <GameHeader
+        playerDisplayName={playerDisplayName}
+        opponentDisplayName={opponentDisplayName}
+        rivalHearts={rivalHearts}
+      />
 
-              <div>
-                <div className="text-xs text-white/60">
-                  <span>YOU</span>
-                </div>
+      <BattleArena
+        selectedIndex={selectedIndex}
+        rivalPlacedCard={rivalPlacedCard}
+        cardsFaceUp={cardsFaceUp}
+        battlePhase={battlePhase}
+        timeLeft={timeLeft}
+        currentMatch={currentMatch}
+        placedCard={placedCard}
+      />
 
-                <div className="font-semibold text-sm">{playerDisplayName}</div>
-              </div>
-            </div>
-
-            <div className="size-8 rounded-full border-2 border-cza-red/90 bg-cza-red/10 flex items-center justify-center">
-              <span className="font-black text-xl">VS</span>
-            </div>
-
-            <div className="flex items-center justify-end gap-3">
-              <div className="text-right">
-                <div className="text-xs text-white/60 flex items-center justify-end gap-2">
-                  <span>RIVAL</span>
-                  <span className="flex items-center gap-0.5 text-cza-red font-black">
-                    <FaHeart />
-                    <span className="text-white/80 text-[11px]">
-                      x{rivalHearts}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="font-semibold text-sm">
-                  {opponentDisplayName}
-                </div>
-              </div>
-
-              <div
-                id="rival-face"
-                className="size-10 rounded-xl overflow-hidden"
-              >
-                <AddressBlock name={opponentDisplayName} />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="w-full min-h-[70vh] pb-16 grow flex flex-col items-center justify-center">
-        <div className="grow w-full flex flex-col items-center justify-center gap-4">
-          <div
-            className={cn(
-              "text-xs flex items-center gap-2 rounded-md border py-1 text-cza-red px-2 border-cza-red/50 transition-opacity duration-300",
-              selectedIndex === null || rivalPlacedCard
-                ? "opacity-0 pointer-events-none"
-                : "opacity-100",
-            )}
-          >
-            <span>Waiting for rival</span>
-            <Spinner themeSize="size-3" />
-          </div>
-
-          <div
-            id="rival-card"
-            style={{
-              aspectRatio: "5 / 7",
-            }}
-            className={cn(
-              "border bg-white/10 border-white/15 rounded-lg w-1/2 max-w-24 flex items-center justify-center battle-card-container",
-              battlePhase === "shake" && "battle-card-shake",
-              battlePhase === "flip" && "battle-card-flip",
-            )}
-          >
-            {rivalPlacedCard ? (
-              <div
-                className="w-full h-full rounded-lg overflow-hidden"
-                style={{
-                  backgroundImage: `url(${cardsFaceUp ? CARD_ART[rivalPlacedCard] : CARD_BACK_ART})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                  boxShadow: "inset 0 0 22px rgba(0,0,0,0.45)",
-                }}
-                aria-label={
-                  cardsFaceUp
-                    ? `${rivalPlacedCard} card face`
-                    : "Hidden rival card"
-                }
-              />
-            ) : (
-              <p className="text-xs opacity-40 text-center p-2">Rival card</p>
-            )}
-          </div>
-        </div>
-
-        <div className="w-full py-8 max-w-2xl">
-          <div className="relative flex items-center justify-center">
-            <div className="grow">
-              <div className="h-px w-full bg-white/20" />
-            </div>
-
-            <div className="flex items-center gap-4 px-4 text-white/90">
-              <div className="flex w-20 items-baseline gap-2">
-                <span className="text-xs ml-auto uppercase text-white/60">
-                  TIME
-                </span>
-                <span className="font-bold w-10 text-center tabular-nums text-cza-red">
-                  {timeLeft.toString().padStart(2, "0")}s
-                </span>
-              </div>
-
-              <div className="h-5 w-px -rotate-6 bg-white/20" aria-hidden />
-
-              <div className="flex items-baseline gap-2">
-                <span className="text-xs uppercase text-white/60">ROUND</span>
-                <span className="font-bold text-white">
-                  {currentMatch} / {MAX_MATCHES}
-                </span>
-              </div>
-
-              <div className="h-5 w-px rotate-6 bg-white/20" aria-hidden />
-
-              <div className="flex w-20 items-baseline gap-2">
-                <span className="text-xs uppercase text-white/60">LOOT</span>
-                <span className="font-bold text-white">$13.4</span>
-              </div>
-            </div>
-
-            <div className="grow">
-              <div className="h-px w-full bg-white/20" />
-            </div>
-          </div>
-        </div>
-        <div className="grow w-full flex flex-col items-center justify-center gap-4">
-          <div
-            id="player-card"
-            style={{
-              aspectRatio: "5 / 7",
-            }}
-            className={cn(
-              "border border-white/15 rounded-lg w-1/3 max-w-24 flex items-center justify-center battle-card-container",
-              placedCard
-                ? "bg-white/15"
-                : "bg-white/10 animate-[pulse_1500ms_infinite_linear]",
-            )}
-          >
-            {placedCard ? (
-              <div
-                className="w-full h-full rounded-lg overflow-hidden"
-                style={{
-                  backgroundImage: `url(${CARD_ART[placedCard]})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                  boxShadow: "inset 0 0 22px rgba(0,0,0,0.45)",
-                }}
-                aria-label={`${placedCard} card face`}
-              />
-            ) : (
-              <p className="text-xs opacity-40 text-center p-2">
-                Pick your
-                <br />
-                card
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <div
-        id="game-pad"
-        className="relative w-80 sm:w-96 h-48 sm:h-56"
-        style={{
-          perspective: 600,
-          transform: battleReady ? "translateY(72px)" : "translateY(0px)",
-          transition: "transform 320ms cubic-bezier(0.4, 0.0, 0.2, 1)",
-        }}
-      >
-        <nav className="-top-12 sm:-top-20 absolute flex justify-between text-white h-14 -left-14 -right-14">
-          <button className="absolute active:scale-98 flex items-center justify-center left-12 sm:left-2 -top-10 size-10">
-            <div className="-space-x-3 -rotate-9 flex items-center">
-              <style>{`
-              @keyframes zeldaHeart {
-                0%,
-                100% {
-                  transform: scale(1);
-                }
-                40% {
-                  transform: scale(1.18);
-                }
-                70% {
-                  transform: scale(0.95);
-                }
-              }
-
-              .zelda-heart {
-                animation: zeldaHeart 1.2s ease-in-out infinite;
-              }
-
-              .zelda-heart-delay {
-                animation-delay: 0.15s;
-              }
-            `}</style>
-              <span className="text-2xl drop-shadow zelda-heart">
-                <FaHeart className="drop-shadow text-cza-red" />
-              </span>
-              {playerHearts > 1 && (
-                <span className="text-2xl drop-shadow zelda-heart zelda-heart-delay">
-                  <FaHeart className="drop-shadow text-cza-red" />
-                </span>
-              )}
-            </div>
-
-            <strong className="ml-1">x{playerHearts}</strong>
-          </button>
-
-          <button className="absolute active:scale-98 flex items-center justify-center right-12 sm:right-2 -top-14 size-10 rounded-lg bg-yellow-100 border-yellow-500 border-2">
-            <figure className="min-w-22 pointer-events-none scale-95 -rotate-9">
-              <img
-                className="w-full"
-                src="https://i.redd.it/h53ukrijn2cy.gif"
-                alt=""
-              />
-            </figure>
-            <div className="absolute text-[0.65rem] leading-none bottom-[125%] text-white font-semibold">
-              Feeling <br />
-              Confident?
-            </div>
-          </button>
-
-          <RetreatAction
-            onConfirm={handleRetreatConfirm}
-            disabled={!!finalWinner}
-          />
-
-          <NukeAction
-            onConfirm={handleNukeConfirm}
-            disabled={playerNukeUsed || !!finalWinner}
-          />
-        </nav>
-
-        <div
-          className={cn(
-            "relative w-full h-full flex items-end justify-center transition-opacity duration-300",
-            battleReady ? "opacity-0 pointer-events-none" : "opacity-100",
-          )}
-        >
-          {playerHand.map((handCard, idx) => {
-            const card = handCard.card
-            const count = playerHand.length
-            const fanOffsets =
-              count === 1 ? [0] : count === 2 ? [-60, 60] : [-80, 0, 80]
-            const rotations =
-              count === 1 ? [0] : count === 2 ? [-10, 10] : [-12, 0, 12]
-            const lift = count === 1 ? [10] : count === 2 ? [8, 8] : [8, 14, 8]
-            const isActive = activeHandIndex === idx
-            const baseTransform = `translateX(${fanOffsets[idx]}px) translateY(-${lift[idx]}px) rotate(${rotations[idx]}deg)`
-            const hoverTransform = `translateX(${fanOffsets[idx]}px) translateY(-30px) rotate(${rotations[idx]}deg)`
-            const closedTransform =
-              "translateX(0px) translateY(26px) rotate(0deg)"
-            const openDelay = idx * 90
-
-            return (
-              <div
-                key={handCard.id}
-                className="absolute cursor-pointer bottom-0 w-28 sm:w-40 border-2 border-black/80 rounded-xl overflow-hidden shadow-xl transition-all duration-200 ease-out select-none"
-                style={{
-                  aspectRatio: "5 / 7",
-                  backgroundImage: `url(${CARD_ART[card]})`,
-                  backgroundSize: "cover",
-                  backgroundPosition: "center",
-                  backgroundRepeat: "no-repeat",
-                  transform: fanOpened
-                    ? isActive
-                      ? hoverTransform
-                      : baseTransform
-                    : closedTransform,
-                  transformOrigin: "bottom center",
-                  transition: fanOpened
-                    ? undefined
-                    : `transform 555ms ease-out ${openDelay}ms`,
-                }}
-                onMouseEnter={(event) => {
-                  // Early return if fan is not opened
-                  if (!fanOpened) return
-
-                  const target = event.currentTarget
-                  if (!isActive) {
-                    target.style.transform = hoverTransform
-                  }
-                  target.style.boxShadow = "0 24px 36px rgba(0,0,0,0.24)"
-                }}
-                onMouseLeave={(event) => {
-                  // Early return if fan is not opened
-                  if (!fanOpened) return
-
-                  const target = event.currentTarget
-                  if (!isActive) {
-                    target.style.transform = baseTransform
-                  }
-                  target.style.boxShadow = "0 18px 30px rgba(0,0,0,0.2)"
-                }}
-                onClick={() => handleSelectCard(card, idx)}
-              >
-                <div className="absolute inset-0 bg-black/10" aria-hidden />
-                {cardArtFailed[card] && (
-                  <div className="absolute inset-0 flex items-center justify-center text-white text-sm font-semibold bg-black/40">
-                    {card}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </div>
+      <GamePad
+        battleReady={battleReady}
+        playerHand={playerHand}
+        playerHearts={playerHearts}
+        activeHandIndex={activeHandIndex}
+        fanOpened={fanOpened}
+        cardArtFailed={cardArtFailed}
+        finalWinner={finalWinner}
+        playerNukeUsed={playerNukeUsed}
+        onSelectCard={handleSelectCard}
+        onNukeConfirm={handleNukeConfirm}
+        onRetreatConfirm={handleRetreatConfirm}
+      />
 
       {selectedCard && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center">
-          <button
-            type="button"
-            className="absolute backdrop-blur inset-0 bg-black/50"
-            onClick={() => {
-              setSelectedCard(null)
-              setActiveHandIndex(null)
-            }}
-            aria-label="Close"
-          />
-          <div className="relative z-10 flex flex-col items-center gap-8">
-            <div
-              key={revealKey}
-              ref={revealCardRef}
-              className="w-64 sm:w-72 border-2 border-black/90 rounded-2xl shadow-2xl relative overflow-hidden transition-[transform,opacity,filter] duration-500 ease-out will-change-transform"
-              style={{
-                transform: revealOpen
-                  ? "rotateY(0deg) rotateX(0deg) scale(1)"
-                  : initialRevealTransform(),
-                opacity: revealOpen ? 1 : 0.6,
-                aspectRatio: "5 / 7",
-                filter: revealOpen ? "blur(0px)" : "blur(1px)",
-                transformOrigin: "bottom center",
-                backgroundImage: `url(${CARD_ART[selectedCard]})`,
-                backgroundSize: "cover",
-                backgroundPosition: "center",
-                backgroundRepeat: "no-repeat",
-              }}
-            >
-              {cardArtFailed[selectedCard] && (
-                <div className="absolute inset-0 flex items-center justify-center text-white text-xl font-semibold bg-black/50">
-                  {selectedCard}
-                </div>
-              )}
-            </div>
-
-            <div
-              style={{
-                filter:
-                  selectedCard === "Alien"
-                    ? "drop-shadow(4px 4px rgba(0,255,0,0.4))"
-                    : "drop-shadow(4px 4px rgba(255,0,0,0.4))",
-              }}
-            >
-              <button
-                style={{
-                  minWidth: "11rem",
-                  clipPath: "polygon(5% 5%, 100% 0, 95% 95%, 0% 100%)",
-                }}
-                className={cn(
-                  "px-10 active:scale-98 group Button flex justify-center items-center text-black py-4 bg-linear-to-l",
-                  selectedCard === "Alien"
-                    ? "from-cza-green via-yellow-300 to-cza-green"
-                    : "from-red-500 via-yellow-500 to-red-500",
-                )}
-                onClick={handleUse}
-              >
-                <style scoped>{`
-                  @keyframes shine {
-                    to {
-                      background-position: 200% center;
-                    }
-                  }
-
-                  .Button {
-                    background-size: 200% 100%;
-                    animation: shine 3s linear infinite;
-                  }
-                `}</style>
-
-                <span className="text-lg group-hover:scale-98 font-black">
-                  USE CARD
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {movingPlayerCard && (
-        <div
-          className="fixed z-30 pointer-events-none"
-          style={{
-            left: movingPlayerCard.from.left,
-            top: movingPlayerCard.from.top,
-            width: movingPlayerCard.from.width,
-            height: movingPlayerCard.from.height,
-            transformOrigin: "top left",
-            transform: movePlayerActive
-              ? `translate(${movingPlayerCard.to.left - movingPlayerCard.from.left}px, ${
-                  movingPlayerCard.to.top - movingPlayerCard.from.top
-                }px) scale(${movingPlayerCard.to.width / movingPlayerCard.from.width}, ${
-                  movingPlayerCard.to.height / movingPlayerCard.from.height
-                })`
-              : "translate(0px, 0px) scale(1)",
-            transition: "transform 320ms ease-out",
+        <CardRevealModal
+          card={selectedCard}
+          revealOpen={revealOpen}
+          revealKey={revealKey}
+          revealCardRef={revealCardRef}
+          selectedIndex={selectedIndex}
+          cardArtFailed={cardArtFailed}
+          onClose={() => {
+            setSelectedCard(null)
+            setActiveHandIndex(null)
           }}
-          onTransitionEnd={() => {
-            setPlacedCard(movingPlayerCard.card)
-            setMovingPlayerCard(null)
-            setMovePlayerActive(false)
-          }}
-        >
-          <div
-            className="w-full h-full border-2 border-black/90 rounded-xl shadow-2xl relative overflow-hidden"
-            style={{
-              backgroundImage: `url(${CARD_ART[movingPlayerCard.card]})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-            }}
-          >
-            {cardArtFailed[movingPlayerCard.card] && (
-              <div className="absolute inset-0 flex items-center justify-center text-white text-sm font-semibold bg-black/50">
-                {movingPlayerCard.card}
-              </div>
-            )}
-          </div>
-        </div>
+          onUse={handleUse}
+        />
       )}
 
-      {movingRivalCard && (
-        <div
-          className="fixed z-10 pointer-events-none"
-          style={{
-            left: movingRivalCard.from.left,
-            top: movingRivalCard.from.top,
-            width: movingRivalCard.width,
-            height: movingRivalCard.height,
-            transformOrigin: "top left",
-            transform: moveRivalActive
-              ? `translate(${movingRivalCard.to.left - movingRivalCard.from.left + movingRivalCard.overshoot.x}px, ${
-                  movingRivalCard.to.top -
-                  movingRivalCard.from.top +
-                  movingRivalCard.overshoot.y
-                }px)`
-              : "translate(0px, 0px)",
-            transition: "transform 320ms ease-out",
-            opacity: 1,
-          }}
-          onTransitionEnd={() => {
-            setRivalPlacedCard(movingRivalCard.card)
-            setMovingRivalCard(null)
-            setMoveRivalActive(false)
-          }}
-        >
-          <div
-            className="w-full h-full border-2 border-black/90 rounded-xl shadow-2xl relative overflow-hidden"
-            style={{
-              backgroundImage: `url(${CARD_BACK_ART})`,
-              backgroundSize: "cover",
-              backgroundPosition: "center",
-              backgroundRepeat: "no-repeat",
-            }}
-          />
-        </div>
+      <CardFlyAnimation
+        movingPlayerCard={movingPlayerCard}
+        movingRivalCard={movingRivalCard}
+        movePlayerActive={movePlayerActive}
+        moveRivalActive={moveRivalActive}
+        cardArtFailed={cardArtFailed}
+        onPlayerCardLand={handlePlayerCardLand}
+        onRivalCardLand={handleRivalCardLand}
+      />
+
+      <OutcomeModal
+        show={showOutcomeModal}
+        outcome={battleOutcome}
+        onDismiss={advanceToNextMatch}
+      />
+
+      {finalWinner && finalRewards && (
+        <FinalBanner
+          winner={finalWinner}
+          rewards={finalRewards}
+          visible={finalBannerVisible}
+          playerDisplayName={playerDisplayName}
+          opponentDisplayName={opponentDisplayName}
+        />
       )}
 
-      {showOutcomeModal && battleOutcome && (
-        <div className="fixed inset-0 z-40 flex gap-8 flex-col items-center justify-center">
-          <button
-            type="button"
-            className="absolute backdrop-blur inset-0 bg-black/70"
-            onClick={advanceToNextMatch}
-            aria-label="Dismiss outcome"
-          />
-          <div
-            className={cn(
-              "relative z-10 backdrop-blur px-10 py-7 rounded-3xl border border-white/15 bg-linear-to-br text-white text-center",
-              battleOutcome === "player" &&
-                "bg-cza-green/10 border-cza-green/30",
-              battleOutcome === "rival" && "bg-cza-red/10 border-cza-red/30",
-              battleOutcome === "draw" && "bg-white/5 border-white/20",
-            )}
-          >
-            <p className="text-xs tracking-[0.25em] text-white">
-              ROUND RESULTS
-            </p>
-
-            <h3
-              className={cn(
-                "mt-2 mb-1 text-4xl font-black tracking-tight",
-                battleOutcome === "player" && "text-cza-green",
-                battleOutcome === "rival" && "text-cza-red",
-                battleOutcome === "draw" && "text-white",
-              )}
-            >
-              {battleOutcome === "player"
-                ? "YOU WIN"
-                : battleOutcome === "rival"
-                  ? "YOU LOSE"
-                  : "DRAW"}
-            </h3>
-          </div>
-        </div>
-      )}
-
-      {finalWinner && finalRewards && finalBannerVisible && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-          <div
-            className="absolute inset-0 backdrop-blur bg-black/80"
-            aria-hidden
-          />
-
-          <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green/25 to-black/90 backdrop-blur px-10 py-12">
-            <p className="text-xs tracking-[0.5em] text-white/60">
-              GAME WINNER
-            </p>
-            <h2 className="mt-4 text-5xl sm:text-6xl font-black tracking-tight">
-              {finalWinner === "player" ? "NyousStark" : "Arthur"}
-            </h2>
-
-            <div className="mt-10 grid grid-cols-2 gap-6">
-              <div className="rounded-2xl border border-white/10 bg-white/5 py-5">
-                <p className="text-xs text-white">Points Earned</p>
-                <p className="mt-2 text-3xl font-black text-white">
-                  {finalRewards.tokens.toLocaleString()}
-                </p>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-white/5 py-5">
-                <p className="text-xs text-white">USDC Earned</p>
-                <p className="mt-2 text-3xl font-black text-cza-green">
-                  {`$${finalRewards.usd.toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}`}
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style global>{`
-        @keyframes rivalFade {
-          0% {
-            opacity: 0;
-          }
-          15% {
-            opacity: 1;
-          }
-          85% {
-            opacity: 1;
-          }
-          100% {
-            opacity: 0;
-          }
-        }
-
-        @keyframes battleCardShake {
-          0% {
-            transform: translateX(0px) rotate(0deg);
-          }
-          20% {
-            transform: translateX(-4px) rotate(-1deg);
-          }
-          40% {
-            transform: translateX(4px) rotate(1deg);
-          }
-          60% {
-            transform: translateX(-3px) rotate(-1deg);
-          }
-          80% {
-            transform: translateX(3px) rotate(1deg);
-          }
-          100% {
-            transform: translateX(0px) rotate(0deg);
-          }
-        }
-
-        @keyframes battleCardFlip {
-          0% {
-            transform: rotateY(0deg) translateZ(0px);
-          }
-          35% {
-            transform: rotateY(-22deg) translateZ(4px);
-          }
-          50% {
-            transform: rotateY(-180deg) translateZ(8px);
-          }
-          65% {
-            transform: rotateY(-22deg) translateZ(4px);
-          }
-          100% {
-            transform: rotateY(0deg) translateZ(0px);
-          }
-        }
-
-        .battle-card-container {
-          transform-style: preserve-3d;
-          backface-visibility: hidden;
-          perspective: 1000px;
-        }
-
-        .battle-card-shake {
-          animation: battleCardShake 180ms ease-in-out 3;
-          transform-origin: center;
-        }
-
-        .battle-card-flip {
-          animation: battleCardFlip 620ms cubic-bezier(0.35, 0, 0.2, 1) forwards;
-          transform-origin: center;
-        }
-      `}</style>
+      <GameStyles />
     </main>
   )
 }
