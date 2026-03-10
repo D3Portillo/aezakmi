@@ -4,13 +4,13 @@ import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useAtom } from "jotai"
 import { useRouter } from "next/navigation"
+import { mutate } from "swr"
 
 import { useAuth } from "@/lib/wallet"
 import { beautifyAddress } from "@/lib/utils"
-import { playerBalanceAtom } from "@/lib/state"
 import { useYellowNetwork } from "@/lib/yellow"
+import { updatePlayerPoints } from "@/actions/points"
 
 import {
   type Card,
@@ -72,8 +72,6 @@ export function useGameLogic(
     : opponentPlayer?.id
       ? (opponentPlayer.id as Address)
       : null
-
-  const [, setPlayerBalance] = useAtom(playerBalanceAtom)
 
   const [sessionRoomId, setSessionRoomId] = useState<string | null>(null)
   const [sessionPending, setSessionPending] = useState(false)
@@ -161,8 +159,12 @@ export function useGameLogic(
       setShowOutcomeModal(false)
       setBattleOutcome(null)
       setFinalBannerVisible(false)
-      if (winner === "player") {
-        setPlayerBalance((prev) => prev + randomBalanceBonus())
+      if (winner === "player" && evmAddress) {
+        updatePlayerPoints(evmAddress, randomBalanceBonus())
+          .then(() => mutate(`points.${evmAddress}`))
+          .catch((error) => {
+            console.error("[useGameLogic] updatePlayerPoints failed", error)
+          })
       }
       if (finalBannerTimeoutRef.current) {
         window.clearTimeout(finalBannerTimeoutRef.current)
@@ -172,7 +174,7 @@ export function useGameLogic(
         500,
       )
     },
-    [finalWinner, setPlayerBalance],
+    [finalWinner, evmAddress],
   )
 
   useEffect(() => {
