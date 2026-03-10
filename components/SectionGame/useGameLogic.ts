@@ -496,10 +496,12 @@ export function useGameLogic(
     const shouldDrawBonus = isAboutToHaveOneCard && !bonusCardUsed
     setPlayerHand((prev) => {
       const remaining = prev.filter((_, idx) => idx !== selectedIndex)
-      if (shouldDrawBonus) {
-        const randomCard =
-          PLAYER_HAND[Math.floor(Math.random() * PLAYER_HAND.length)]
-        return [...remaining, { id: nextCardId(), card: randomCard }]
+      if (shouldDrawBonus && remaining.length > 0) {
+        const pool = PLAYER_HAND.filter((c) => c !== remaining[0].card)
+        if (pool.length > 0) {
+          const randomCard = pool[Math.floor(Math.random() * pool.length)]
+          return [...remaining, { id: nextCardId(), card: randomCard }]
+        }
       }
       return remaining
     })
