@@ -1,9 +1,9 @@
 "use server"
 
 import { redis } from "@/lib/redis"
+import { DEFAULT_PLAYER_POINTS } from "@/lib/constants"
 
 const POINTS_KEY_PREFIX = "cza:points:"
-export const DEFAULT_PLAYER_POINTS = 1500
 
 const pointsKey = (playerId: string) =>
   `${POINTS_KEY_PREFIX}${playerId.toLowerCase()}`

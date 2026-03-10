@@ -2,7 +2,8 @@
 
 import useSWR from "swr"
 
-import { getPlayerPoints, DEFAULT_PLAYER_POINTS } from "@/actions/points"
+import { getPlayerPoints } from "@/actions/points"
+import { DEFAULT_PLAYER_POINTS } from "@/lib/constants"
 
 export function usePoints(playerId: string | null | undefined) {
   const {
