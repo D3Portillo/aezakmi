@@ -17,6 +17,7 @@ export const CARD_BEATS: Record<Card, Card> = {
 }
 
 export const MAX_MATCHES = 3
+export const ROUND_TIME_SECONDS = 120
 export const GAME_CARD_EVENT = "cza.game.cardPlayed"
 export const GAME_NUKE_EVENT = "cza.game.nuke"
 

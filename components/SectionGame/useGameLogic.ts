@@ -19,8 +19,10 @@ import {
   CARD_ART,
   CARD_BEATS,
   MAX_MATCHES,
+  ROUND_TIME_SECONDS,
   GAME_CARD_EVENT,
   GAME_NUKE_EVENT,
+  nextCardId,
   createInitialHand,
   generateRewards,
   randomBalanceBonus,
@@ -79,6 +81,7 @@ export function useGameLogic(
   const [sessionPending, setSessionPending] = useState(false)
   const [playerNukeUsed, setPlayerNukeUsed] = useState(false)
   const [opponentNukeUsed, setOpponentNukeUsed] = useState(false)
+  const [bonusCardUsed, setBonusCardUsed] = useState(false)
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
   )
@@ -109,7 +112,7 @@ export function useGameLogic(
     usd: number
   } | null>(null)
   const [finalBannerVisible, setFinalBannerVisible] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(120)
+  const [timeLeft, setTimeLeft] = useState(ROUND_TIME_SECONDS)
   const [cardsFaceUp, setCardsFaceUp] = useState(false)
   const [cardArtFailed, setCardArtFailed] = useState<Record<Card, boolean>>({
     Cowboy: false,
@@ -150,6 +153,7 @@ export function useGameLogic(
     setBattlePhase("idle")
     setPlayerNukeUsed(false)
     setOpponentNukeUsed(false)
+    setTimeLeft(ROUND_TIME_SECONDS)
     setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
   }, [finalWinner])
 
@@ -488,7 +492,20 @@ export function useGameLogic(
     if (!target) return
     const from = revealCardRef.current.getBoundingClientRect()
     const to = target.getBoundingClientRect()
-    setPlayerHand((prev) => prev.filter((_, idx) => idx !== selectedIndex))
+    const isAboutToHaveOneCard = playerHand.length === 2
+    const shouldDrawBonus = isAboutToHaveOneCard && !bonusCardUsed
+    setPlayerHand((prev) => {
+      const remaining = prev.filter((_, idx) => idx !== selectedIndex)
+      if (shouldDrawBonus && remaining.length > 0) {
+        const pool = PLAYER_HAND.filter((c) => c !== remaining[0].card)
+        if (pool.length > 0) {
+          const randomCard = pool[Math.floor(Math.random() * pool.length)]
+          return [...remaining, { id: nextCardId(), card: randomCard }]
+        }
+      }
+      return remaining
+    })
+    if (shouldDrawBonus) setBonusCardUsed(true)
     setMovingPlayerCard({ card: selectedCard, from, to })
     setMovePlayerActive(false)
     setSelectedCard(null)
