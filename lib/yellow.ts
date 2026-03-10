@@ -2,7 +2,7 @@
 
 import type { Address, Hex } from "viem"
 
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import useSWR from "swr/immutable"
 
 import { createWalletClient, http, keccak256 } from "viem"
@@ -53,6 +53,28 @@ export const useYellowNetwork = () => {
   const { data: ws = null } = useSWR("yellow.main", () => {
     return new WebSocket("wss://clearnet-sandbox.yellow.com/ws")
   })
+
+  // Listen for incoming game events sent by the opponent via Yellow Network
+  useEffect(() => {
+    if (!ws || !isSessionActive) return
+
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const message = parseAnyRPCResponse(event.data)
+        if (message.method !== RPCMethod.Message) return
+
+        const params = message.params as { type?: string; data?: unknown }
+        if (!params?.type) return
+
+        setLatestEvent({ method: params.type, params: params.data })
+      } catch {
+        // Ignore unrecognised message formats
+      }
+    }
+
+    ws.addEventListener("message", handleMessage)
+    return () => ws.removeEventListener("message", handleMessage)
+  }, [ws, isSessionActive])
 
   // @see https://docs.yellow.org/docs/build/quick-start/#step-3-create-application-session
   const setupMessageSigner = async () => {

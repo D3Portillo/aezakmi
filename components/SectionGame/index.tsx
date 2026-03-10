@@ -173,6 +173,7 @@ export default function SectionGame({
   const revealCardRef = useRef<HTMLDivElement | null>(null)
   const finalBannerTimeoutRef = useRef<number | null>(null)
   const lastNukeEventRef = useRef<number | null>(null)
+  const lastCardEventRef = useRef<number | null>(null)
 
   useEffect(() => {
     return () => {
@@ -484,6 +485,51 @@ export default function SectionGame({
     isMockMatch,
   ])
 
+  // Handle card played by the opponent in real PvP matches
+  useEffect(() => {
+    if (isMockMatch) return
+
+    if (
+      !latestEvent ||
+      latestEvent.method !== GAME_CARD_EVENT ||
+      !currentRoomId
+    ) {
+      return
+    }
+
+    const payload = latestEvent.params as {
+      roomId?: string
+      card?: Card
+      playerId?: string
+      issuedAt?: number
+    }
+
+    if (!payload?.roomId || payload.roomId !== currentRoomId) {
+      return
+    }
+
+    const sender = payload.playerId?.toLowerCase()
+    if (!sender || sender === normalizedCurrentId?.toLowerCase()) {
+      return
+    }
+
+    if (payload.issuedAt && lastCardEventRef.current === payload.issuedAt) {
+      return
+    }
+
+    if (payload.issuedAt) {
+      lastCardEventRef.current = payload.issuedAt
+    }
+
+    const card = payload.card
+    if (!card || !PLAYER_HAND.includes(card)) {
+      return
+    }
+
+    animateRivalPlace(card)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latestEvent, currentRoomId, normalizedCurrentId, isMockMatch])
+
   useEffect(() => {
     if (!battleReady) {
       setBattlePhase("idle")
@@ -648,11 +694,15 @@ export default function SectionGame({
       window.requestAnimationFrame(() => setMovePlayerActive(true))
     })
 
-    window.setTimeout(() => {
-      const rivalCard =
-        PLAYER_HAND[Math.floor(Math.random() * PLAYER_HAND.length)]
-      animateRivalPlace(rivalCard)
-    }, 2000)
+    // In mock matches, simulate the rival's card play automatically.
+    // In real PvP matches, the rival's card arrives via Yellow Network events.
+    if (isMockMatch) {
+      window.setTimeout(() => {
+        const rivalCard =
+          PLAYER_HAND[Math.floor(Math.random() * PLAYER_HAND.length)]
+        animateRivalPlace(rivalCard)
+      }, 2000)
+    }
   }
 
   const animateRivalPlace = (card: Card) => {
@@ -1217,7 +1267,7 @@ export default function SectionGame({
               GAME WINNER
             </p>
             <h2 className="mt-4 text-5xl sm:text-6xl font-black tracking-tight">
-              {finalWinner === "player" ? "NyousStark" : "Arthur"}
+              {finalWinner === "player" ? playerDisplayName : opponentDisplayName}
             </h2>
 
             <div className="mt-10 grid grid-cols-2 gap-6">
