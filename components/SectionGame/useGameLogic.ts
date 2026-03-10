@@ -19,6 +19,7 @@ import {
   CARD_ART,
   CARD_BEATS,
   MAX_MATCHES,
+  ROUND_TIME_SECONDS,
   GAME_CARD_EVENT,
   GAME_NUKE_EVENT,
   createInitialHand,
@@ -109,7 +110,7 @@ export function useGameLogic(
     usd: number
   } | null>(null)
   const [finalBannerVisible, setFinalBannerVisible] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(120)
+  const [timeLeft, setTimeLeft] = useState(ROUND_TIME_SECONDS)
   const [cardsFaceUp, setCardsFaceUp] = useState(false)
   const [cardArtFailed, setCardArtFailed] = useState<Record<Card, boolean>>({
     Cowboy: false,
@@ -150,6 +151,8 @@ export function useGameLogic(
     setBattlePhase("idle")
     setPlayerNukeUsed(false)
     setOpponentNukeUsed(false)
+    setPlayerHand(createInitialHand())
+    setTimeLeft(ROUND_TIME_SECONDS)
     setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
   }, [finalWinner])
 
