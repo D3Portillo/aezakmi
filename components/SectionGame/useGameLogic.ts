@@ -22,6 +22,7 @@ import {
   ROUND_TIME_SECONDS,
   GAME_CARD_EVENT,
   GAME_NUKE_EVENT,
+  nextCardId,
   createInitialHand,
   generateRewards,
   randomBalanceBonus,
@@ -80,6 +81,7 @@ export function useGameLogic(
   const [sessionPending, setSessionPending] = useState(false)
   const [playerNukeUsed, setPlayerNukeUsed] = useState(false)
   const [opponentNukeUsed, setOpponentNukeUsed] = useState(false)
+  const [bonusCardUsed, setBonusCardUsed] = useState(false)
   const [playerHand, setPlayerHand] = useState<PlayerHandCard[]>(() =>
     createInitialHand(),
   )
@@ -151,7 +153,6 @@ export function useGameLogic(
     setBattlePhase("idle")
     setPlayerNukeUsed(false)
     setOpponentNukeUsed(false)
-    setPlayerHand(createInitialHand())
     setTimeLeft(ROUND_TIME_SECONDS)
     setCurrentMatch((prev) => Math.min(prev + 1, MAX_MATCHES))
   }, [finalWinner])
@@ -491,7 +492,18 @@ export function useGameLogic(
     if (!target) return
     const from = revealCardRef.current.getBoundingClientRect()
     const to = target.getBoundingClientRect()
-    setPlayerHand((prev) => prev.filter((_, idx) => idx !== selectedIndex))
+    const isAboutToHaveOneCard = playerHand.length === 2
+    const shouldDrawBonus = isAboutToHaveOneCard && !bonusCardUsed
+    setPlayerHand((prev) => {
+      const remaining = prev.filter((_, idx) => idx !== selectedIndex)
+      if (shouldDrawBonus) {
+        const randomCard =
+          PLAYER_HAND[Math.floor(Math.random() * PLAYER_HAND.length)]
+        return [...remaining, { id: nextCardId(), card: randomCard }]
+      }
+      return remaining
+    })
+    if (shouldDrawBonus) setBonusCardUsed(true)
     setMovingPlayerCard({ card: selectedCard, from, to })
     setMovePlayerActive(false)
     setSelectedCard(null)
