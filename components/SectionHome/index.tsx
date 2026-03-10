@@ -8,6 +8,7 @@ import { joinMatchmaking, type MatchmakingResult } from "@/actions/matchmaking"
 import AddressBlock from "@/components/AddressBlock"
 import { cn } from "@/lib/utils"
 import { usePoints } from "@/lib/usePoints"
+import { DEFAULT_PLAYER_POINTS } from "@/lib/constants"
 
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 import { GiUpgrade } from "react-icons/gi"
@@ -136,7 +137,7 @@ export default function SectionHome({
             TOP RANK #4
           </div>
           <div className="font-bold text-sm text-cza-green">
-            {playerBalance.toLocaleString()} Points (CZA)
+            {(isConnected ? playerBalance : DEFAULT_PLAYER_POINTS).toLocaleString()} Points (CZA)
           </div>
         </div>
 

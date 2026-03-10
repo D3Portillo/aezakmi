@@ -135,6 +135,7 @@ export default function SectionGame({
           visible={finalBannerVisible}
           playerDisplayName={playerDisplayName}
           opponentDisplayName={opponentDisplayName}
+          onAccept={handleRetreatConfirm}
         />
       )}
 
