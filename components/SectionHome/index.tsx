@@ -7,7 +7,8 @@ import { atomWithStorage } from "jotai/utils"
 import { joinMatchmaking, type MatchmakingResult } from "@/actions/matchmaking"
 import AddressBlock from "@/components/AddressBlock"
 import { cn } from "@/lib/utils"
-import { playerBalanceAtom } from "@/lib/state"
+import { usePoints } from "@/lib/usePoints"
+import { DEFAULT_PLAYER_POINTS } from "@/lib/constants"
 
 import { IconEye, IconSheriffStar, IconSkull } from "@/components/icons"
 import { GiUpgrade } from "react-icons/gi"
@@ -82,7 +83,6 @@ export default function SectionHome({
   const [walletMenuOpen, setWalletMenuOpen] = useState(false)
   const [isBattleModalOpen, setBattleModalOpen] = useState(false)
   const [showTutorial, setShowTutorial] = useAtom(showTutorialAtom)
-  const [playerBalance] = useAtom(playerBalanceAtom)
   const [isJoining, startMatchmakingTransition] = useTransition()
   const {
     logout,
@@ -92,6 +92,7 @@ export default function SectionHome({
     login,
     isConnected,
   } = useAuth()
+  const { points: playerBalance } = usePoints(evmAddress)
 
   useEffect(() => {
     if (!showTutorial) {
@@ -136,7 +137,7 @@ export default function SectionHome({
             TOP RANK #4
           </div>
           <div className="font-bold text-sm text-cza-green">
-            {playerBalance.toLocaleString()} Points (CZA)
+            {(isConnected ? playerBalance : DEFAULT_PLAYER_POINTS).toLocaleString()} Points (CZA)
           </div>
         </div>
 

@@ -4,6 +4,7 @@ type FinalBannerProps = {
   visible: boolean
   playerDisplayName: string
   opponentDisplayName: string
+  onAccept: () => void
 }
 
 export default function FinalBanner({
@@ -12,6 +13,7 @@ export default function FinalBanner({
   visible,
   playerDisplayName,
   opponentDisplayName,
+  onAccept,
 }: FinalBannerProps) {
   if (!visible) return null
 
@@ -43,6 +45,13 @@ export default function FinalBanner({
             </p>
           </div>
         </div>
+        <button
+          type="button"
+          onClick={onAccept}
+          className="mt-10 text-sm font-semibold text-white/70 underline underline-offset-4 hover:text-white transition-colors"
+        >
+          ACCEPT
+        </button>
       </div>
     </div>
   )
