@@ -4,6 +4,7 @@ import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 import { mutate } from "swr"
 
 import { useAuth } from "@/lib/wallet"
@@ -41,6 +42,7 @@ export function useGameLogic(
 ) {
   const { createSession, isSessionActive, sendEvent, latestEvent } =
     useYellowNetwork()
+  const router = useRouter()
   const createSessionRef = useRef(createSession)
   const sendEventRef = useRef(sendEvent)
 
@@ -135,9 +137,11 @@ export function useGameLogic(
   const finalBannerTimeoutRef = useRef<number | null>(null)
   const lastNukeEventRef = useRef<number | null>(null)
   const lastCardEventRef = useRef<number | null>(null)
+  const timeoutResolvedRef = useRef(false)
 
   const advanceToNextMatch = useCallback(() => {
     if (finalWinner) return
+    timeoutResolvedRef.current = false
     setShowOutcomeModal(false)
     setBattleOutcome(null)
     setPlacedCard(null)
@@ -265,7 +269,9 @@ export function useGameLogic(
 
   useEffect(() => {
     if (timeLeft !== 0 || finalWinner) return
+    if (timeoutResolvedRef.current) return
     if (battleReady || battlePhase === "flip") return
+    timeoutResolvedRef.current = true
     if (playerHearts > rivalHearts) declareFinalWinner("player")
     else if (rivalHearts > playerHearts) declareFinalWinner("rival")
     else declareFinalWinner("draw")
@@ -593,7 +599,7 @@ export function useGameLogic(
   }
 
   const handleFinalBannerAccept = () => {
-    window.location.assign("/")
+    router.replace("/?lobby=1")
   }
 
   const handlePlayerCardLand = (card: Card) => {
