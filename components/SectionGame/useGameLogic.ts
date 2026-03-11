@@ -4,7 +4,6 @@ import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { mutate } from "swr"
 
 import { useAuth } from "@/lib/wallet"
@@ -34,13 +33,14 @@ export type GameMatch = {
   isMock?: boolean
 }
 
+type FinalOutcome = "player" | "rival" | "draw"
+
 export function useGameLogic(
   match: GameMatch | null | undefined,
   currentPlayerId: string | null | undefined,
 ) {
   const { createSession, isSessionActive, sendEvent, latestEvent } =
     useYellowNetwork()
-  const router = useRouter()
   const createSessionRef = useRef(createSession)
   const sendEventRef = useRef(sendEvent)
 
@@ -102,9 +102,7 @@ export function useGameLogic(
   const [playerHearts, setPlayerHearts] = useState(2)
   const [rivalHearts, setRivalHearts] = useState(2)
   const [currentMatch, setCurrentMatch] = useState(1)
-  const [finalWinner, setFinalWinner] = useState<"player" | "rival" | null>(
-    null,
-  )
+  const [finalWinner, setFinalWinner] = useState<FinalOutcome | null>(null)
   const [finalRewards, setFinalRewards] = useState<{
     tokens: number
     usd: number
@@ -156,14 +154,16 @@ export function useGameLogic(
   }, [finalWinner])
 
   const declareFinalWinner = useCallback(
-    (winner: "player" | "rival") => {
+    (winner: FinalOutcome) => {
       if (finalWinner) return
       setFinalWinner(winner)
-      setFinalRewards(generateRewards(winner))
+      setFinalRewards(
+        winner === "draw" ? { tokens: 0, usd: 0 } : generateRewards(winner),
+      )
       setShowOutcomeModal(false)
       setBattleOutcome(null)
       setFinalBannerVisible(false)
-      if (evmAddress) {
+      if (winner !== "draw" && evmAddress) {
         const bonus = randomBalanceBonus()
         const playerDelta = winner === "player" ? bonus : -bonus
         updatePlayerPoints(evmAddress, playerDelta)
@@ -262,6 +262,22 @@ export function useGameLogic(
     }, 1000)
     return () => window.clearInterval(interval)
   }, [])
+
+  useEffect(() => {
+    if (timeLeft !== 0 || finalWinner) return
+    if (battleReady || battlePhase === "flip") return
+    if (playerHearts > rivalHearts) declareFinalWinner("player")
+    else if (rivalHearts > playerHearts) declareFinalWinner("rival")
+    else declareFinalWinner("draw")
+  }, [
+    timeLeft,
+    finalWinner,
+    battleReady,
+    battlePhase,
+    playerHearts,
+    rivalHearts,
+    declareFinalWinner,
+  ])
 
   useEffect(() => {
     if (!placedCard || !rivalPlacedCard) {
@@ -573,7 +589,11 @@ export function useGameLogic(
   }
 
   const handleRetreatConfirm = () => {
-    router.push("/")
+    declareFinalWinner("rival")
+  }
+
+  const handleFinalBannerAccept = () => {
+    window.location.assign("/")
   }
 
   const handlePlayerCardLand = (card: Card) => {
@@ -624,6 +644,7 @@ export function useGameLogic(
     handleUse,
     handleNukeConfirm,
     handleRetreatConfirm,
+    handleFinalBannerAccept,
     advanceToNextMatch,
     handlePlayerCardLand,
     handleRivalCardLand,

@@ -11,7 +11,7 @@ type GamePadProps = {
   activeHandIndex: number | null
   fanOpened: boolean
   cardArtFailed: Record<Card, boolean>
-  finalWinner: "player" | "rival" | null
+  finalWinner: "player" | "rival" | "draw" | null
   playerNukeUsed: boolean
   onSelectCard: (card: Card, index: number) => void
   onNukeConfirm: () => void
