@@ -1,5 +1,5 @@
 type FinalBannerProps = {
-  winner: "player" | "rival"
+  winner: "player" | "rival" | "draw"
   rewards: { tokens: number; usd: number }
   visible: boolean
   playerDisplayName: string
@@ -24,9 +24,15 @@ export default function FinalBanner({
         aria-hidden
       />
       <div className="relative max-w-xl w-full text-center text-white rounded-4xl border border-white/20 bg-linear-to-br from-cza-green/25 to-black/90 backdrop-blur px-10 py-12">
-        <p className="text-xs tracking-[0.5em] text-white/60">GAME WINNER</p>
+        <p className="text-xs tracking-[0.5em] text-white/60">
+          {winner === "draw" ? "GAME DRAW" : "GAME WINNER"}
+        </p>
         <h2 className="mt-4 text-5xl sm:text-6xl font-black tracking-tight">
-          {winner === "player" ? playerDisplayName : opponentDisplayName}
+          {winner === "draw"
+            ? "DRAW"
+            : winner === "player"
+              ? playerDisplayName
+              : opponentDisplayName}
         </h2>
         <div className="mt-10 grid grid-cols-2 gap-6">
           <div className="rounded-2xl border border-white/10 bg-white/5 py-5">

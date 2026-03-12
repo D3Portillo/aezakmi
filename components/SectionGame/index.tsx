@@ -57,6 +57,7 @@ export default function SectionGame({
     handleUse,
     handleNukeConfirm,
     handleRetreatConfirm,
+    handleFinalBannerAccept,
     advanceToNextMatch,
     handlePlayerCardLand,
     handleRivalCardLand,
@@ -135,7 +136,7 @@ export default function SectionGame({
           visible={finalBannerVisible}
           playerDisplayName={playerDisplayName}
           opponentDisplayName={opponentDisplayName}
-          onAccept={handleRetreatConfirm}
+          onAccept={handleFinalBannerAccept}
         />
       )}
 
