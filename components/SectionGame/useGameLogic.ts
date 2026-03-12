@@ -4,7 +4,6 @@ import type { Address } from "viem"
 import type { MatchPlayer } from "@/lib/types/matchmaking"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { mutate } from "swr"
 
 import { useAuth } from "@/lib/wallet"
@@ -42,7 +41,6 @@ export function useGameLogic(
 ) {
   const { createSession, isSessionActive, sendEvent, latestEvent } =
     useYellowNetwork()
-  const router = useRouter()
   const createSessionRef = useRef(createSession)
   const sendEventRef = useRef(sendEvent)
 
@@ -599,7 +597,7 @@ export function useGameLogic(
   }
 
   const handleFinalBannerAccept = () => {
-    router.replace("/?lobby=1")
+    window.location.reload()
   }
 
   const handlePlayerCardLand = (card: Card) => {
